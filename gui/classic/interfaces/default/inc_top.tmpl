@@ -4,9 +4,9 @@
 
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml"> 
+<html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-    <title>Sick Beard - alpha $sickbeard.version.SICKBEARD_VERSION - $title</title>
+    <title>$title - Sick Beard - alpha $sickbeard.version.SICKBEARD_VERSION</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <link rel="shortcut icon" href="$sbRoot/images/favicon.ico" />
     <link rel="apple-touch-icon" href="$sbRoot/images/sickbeard_touch_icon.png" />
@@ -61,7 +61,7 @@ th.tablesorter-headerSortDown { background-image: url("$sbRoot/images/tablesorte
 #if $sickbeard.NEWEST_VERSION_STRING:
 .ui-pnotify { top: 30px !important; }
 #end if
-//--> 
+//-->
 </style>
 
     <script type="text/javascript" src="$sbRoot/js/lib/jquery-1.7.1.min.js"></script>
@@ -83,24 +83,24 @@ th.tablesorter-headerSortDown { background-image: url("$sbRoot/images/tablesorte
     <!--
         sbRoot = "$sbRoot";
         //HTML for scrolltopcontrol, which is auto wrapped in DIV w/ ID="topcontrol"
-        top_image_html = '<img src="$sbRoot/images/top.gif" style="width:31px; height:11px" alt="Jump to top" />'; 
+        top_image_html = '<img src="$sbRoot/images/top.gif" style="width:31px; height:11px" alt="Jump to top" />';
     //-->
     </script>
     <script type="text/javascript" src="$sbRoot/js/lib/jquery.scrolltopcontrol-1.1.js"></script>
     <script type="text/javascript" src="$sbRoot/js/browser.js"></script>
     <script type="text/javascript" src="$sbRoot/js/ajaxNotifications.js"></script>
-    
+
 <script type="text/javascript">
 <!--
-    \$(document).ready(function(){ 
-        \$("ul.sf-menu").supersubs({ 
-            minWidth:    12,   // minimum width of sub-menus in em units 
-            maxWidth:    27,   // maximum width of sub-menus in em units 
-            extraWidth:  1     // extra width can ensure lines don't sometimes turn over 
-                               // due to slight rounding differences and font-family 
+    \$(document).ready(function(){
+        \$("ul.sf-menu").supersubs({
+            minWidth:    12,   // minimum width of sub-menus in em units
+            maxWidth:    27,   // maximum width of sub-menus in em units
+            extraWidth:  1     // extra width can ensure lines don't sometimes turn over
+                               // due to slight rounding differences and font-family
         }).superfish({
             delay:         150,
-            disableHI:     true, 
+            disableHI:     true,
             animation:   {opacity:'show',height:'show'},
             speed:       'fast',
             dropShadows: false
