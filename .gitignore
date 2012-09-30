@@ -37,6 +37,8 @@ CHANGELOG.txt
 *.tmproj
 *.tmproject
 *.sw?
+.settings/*
+.pydevproject
 
 # OS generated files #
 ######################
