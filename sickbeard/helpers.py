@@ -109,14 +109,14 @@ def sanitizeFileName (name):
     >>> sanitizeFileName('.a.b..')
     'a.b'
     '''
-    
+
     # remove bad chars from the filename
     name = re.sub(r'[\\/\*]', '-', name)
     name = re.sub(r'[:"<>|?]', '', name)
-    
+
     # remove leading/trailing periods and spaces
     name = name.strip(' .')
-    
+
     return name
 
 
@@ -407,12 +407,18 @@ def copyFile(srcFile, destFile):
     except OSError:
         pass
 
+def linkFile(srcFile, destFile):
+    try:
+        ek.ek(os.link, srcFile, destFile)
+    except OSError:
+        copyFile(srcFile, destFile)
+
 def moveFile(srcFile, destFile):
     try:
         ek.ek(os.rename, srcFile, destFile)
         fixSetGroupID(destFile)
     except OSError:
-        copyFile(srcFile, destFile)
+        linkFile(srcFile, destFile)
         ek.ek(os.unlink, srcFile)
 
 def rename_file(old_path, new_name):
@@ -437,13 +443,13 @@ def chmodAsParent(childPath):
         return
 
     parentPath = ek.ek(os.path.dirname, childPath)
-    
+
     if not parentPath:
         logger.log(u"No parent path provided in "+childPath+", unable to get permissions from it", logger.DEBUG)
         return
-    
+
     parentMode = stat.S_IMODE(os.stat(parentPath)[stat.ST_MODE])
-    
+
     childPathStat = ek.ek(os.stat, childPath)
     childPath_mode = stat.S_IMODE(childPathStat[stat.ST_MODE])
 
@@ -507,9 +513,9 @@ def fixSetGroupID(childPath):
 def sanitizeSceneName (name, ezrss=False):
     """
     Takes a show name and returns the "scenified" version of it.
-    
+
     ezrss: If true the scenified version will follow EZRSS's cracksmoker rules as best as possible
-    
+
     Returns: A string containing the scene version of the show name given.
     """
 
