@@ -143,7 +143,11 @@ $myShowList.sort(lambda x, y: cmp(x.name, y.name))
     #set $dlStat = str($curShowDownloads[0])+" / "+str($curShowAll[0])
     #set $nom = $curShowDownloads[0]
     #set $den = $curShowAll[0]
-    #set $lastDownload = time.strftime("%Y-%m-%d %X", time.localtime($curShowlastDownloaded))
+    #try:
+        #set $lastDownload = time.strftime("%Y-%m-%d %X", time.localtime(int($curShowlastDownloaded)))
+    #except ValueError:
+        #set $lastDownload = ""
+    #end try
   #else
     #set $dlStat = "0 / "+str($curShowAll[0])
     #set $nom = 0
@@ -192,3 +196,4 @@ $myShowList.sort(lambda x, y: cmp(x.name, y.name))
 
 <script type="text/javascript" src="$sbRoot/js/tableClick.js"></script>
 #include $os.path.join($sickbeard.PROG_DIR,"gui/slick/interfaces/default/inc_bottom.tmpl")
+
