@@ -144,8 +144,8 @@ $myShowList.sort(lambda x, y: cmp(x.name, y.name))
     #set $nom = $curShowDownloads[0]
     #set $den = $curShowAll[0]
     #try:
-        #set $lastDownload = time.strftime("%Y-%m-%d %X", time.localtime(int($curShowlastDownloaded)))
-    #except ValueError:
+        #set $lastDownload = time.strftime("%Y-%m-%d %X", time.localtime(int($curShowlastDownloaded[0])))
+    #except (ValueError, TypeError):
         #set $lastDownload = ""
     #end try
   #else
