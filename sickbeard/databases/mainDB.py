@@ -33,24 +33,24 @@ class MainSanityCheck(db.DBSanityCheck):
         self.fix_duplicate_episodes()
 
     def fix_duplicate_episodes(self):
-    
+
         sqlResults = self.connection.select("SELECT showid, season, episode, COUNT(*) as count FROM tv_episodes GROUP BY showid, season, episode HAVING COUNT(*) > 1")
-    
+
         for cur_duplicate in sqlResults:
-    
+
             logger.log(u"Duplicate episode detected! showid: "+str(cur_duplicate["showid"])+" season: "+str(cur_duplicate["season"])+" episode: "+str(cur_duplicate["episode"])+" count: "+str(cur_duplicate["count"]), logger.DEBUG)
-    
+
             cur_dupe_results = self.connection.select("SELECT episode_id FROM tv_episodes WHERE showid = ? AND season = ? and episode = ? LIMIT ?",
                                            [cur_duplicate["showid"], cur_duplicate["season"], cur_duplicate["episode"], int(cur_duplicate["count"])-1]
                                            )
-            
+
             for cur_dupe_id in cur_dupe_results:
                 logger.log(u"Deleting episode with id "+str(cur_dupe_id["episode_id"]))
                 self.connection.action("DELETE FROM tv_episodes WHERE episode_id = ?", [cur_dupe_id["episode_id"]])
-        
+
         else:
             logger.log(u"No duplicate episode, check passed")
-        
+
 # ======================
 # = Main DB Migrations =
 # ======================
@@ -63,7 +63,7 @@ class InitialSchema (db.SchemaUpgrade):
     def execute(self):
         queries = [
             "CREATE TABLE tv_shows (show_id INTEGER PRIMARY KEY, location TEXT, show_name TEXT, tvdb_id NUMERIC, network TEXT, genre TEXT, runtime NUMERIC, quality NUMERIC, airs TEXT, status TEXT, seasonfolders NUMERIC, paused NUMERIC, startyear NUMERIC);",
-            "CREATE TABLE tv_episodes (episode_id INTEGER PRIMARY KEY, showid NUMERIC, tvdbid NUMERIC, name TEXT, season NUMERIC, episode NUMERIC, description TEXT, airdate NUMERIC, hasnfo NUMERIC, hastbn NUMERIC, status NUMERIC, location TEXT);",
+            "CREATE TABLE tv_episodes (episode_id INTEGER PRIMARY KEY, showid NUMERIC, tvdbid NUMERIC, name TEXT, season NUMERIC, episode NUMERIC, description TEXT, airdate NUMERIC, hasnfo NUMERIC, hastbn NUMERIC, status NUMERIC, location TEXT, date_modify NUMERIC);",
             "CREATE TABLE info (last_backlog NUMERIC, last_tvdb NUMERIC);",
             "CREATE TABLE history (action NUMERIC, date NUMERIC, showid NUMERIC, season NUMERIC, episode NUMERIC, quality NUMERIC, resource TEXT, provider NUMERIC);"
         ]
@@ -303,7 +303,7 @@ class AddAirByDateOption(UpgradeHistoryForGenericProviders):
 class ChangeSabConfigFromIpToHost(AddAirByDateOption):
     def test(self):
         return self.checkDBVersion() >= 5
-    
+
     def execute(self):
         sickbeard.SAB_HOST = 'http://' + sickbeard.SAB_HOST + '/sabnzbd/'
         self.incDBVersion()
@@ -311,7 +311,7 @@ class ChangeSabConfigFromIpToHost(AddAirByDateOption):
 class FixSabHostURL(ChangeSabConfigFromIpToHost):
     def test(self):
         return self.checkDBVersion() >= 6
-    
+
     def execute(self):
         if sickbeard.SAB_HOST.endswith('/sabnzbd/'):
             sickbeard.SAB_HOST = sickbeard.SAB_HOST.replace('/sabnzbd/','/')
@@ -328,10 +328,10 @@ class AddLang (FixSabHostURL):
 class PopulateRootDirs (AddLang):
     def test(self):
         return self.checkDBVersion() >= 7
-    
+
     def execute(self):
         dir_results = self.connection.select("SELECT location FROM tv_shows")
-        
+
         dir_counts = {}
         for cur_dir in dir_results:
             cur_root_dir = ek.ek(os.path.dirname, ek.ek(os.path.normpath, cur_dir["location"]))
@@ -339,30 +339,30 @@ class PopulateRootDirs (AddLang):
                 dir_counts[cur_root_dir] = 1
             else:
                 dir_counts[cur_root_dir] += 1
-        
+
         logger.log(u"Dir counts: "+str(dir_counts), logger.DEBUG)
-        
+
         if not dir_counts:
             self.incDBVersion()
             return
-        
+
         default_root_dir = dir_counts.values().index(max(dir_counts.values()))
-        
+
         new_root_dirs = str(default_root_dir)+'|'+'|'.join(dir_counts.keys())
         logger.log(u"Setting ROOT_DIRS to: "+new_root_dirs, logger.DEBUG)
-        
+
         sickbeard.ROOT_DIRS = new_root_dirs
-        
+
         sickbeard.save_config()
-        
+
         self.incDBVersion()
-        
+
 
 class SetNzbTorrentSettings(PopulateRootDirs):
 
     def test(self):
         return self.checkDBVersion() >= 8
-    
+
     def execute(self):
 
         use_torrents = False
@@ -381,22 +381,22 @@ class SetNzbTorrentSettings(PopulateRootDirs):
 
         sickbeard.USE_TORRENTS = use_torrents
         sickbeard.USE_NZBS = use_nzbs
-        
+
         sickbeard.save_config()
-        
+
         self.incDBVersion()
 
 class FixAirByDateSetting(SetNzbTorrentSettings):
-    
+
     def test(self):
         return self.checkDBVersion() >= 9
 
     def execute(self):
-        
+
         shows = self.connection.select("SELECT * FROM tv_shows")
-        
+
         for cur_show in shows:
             if cur_show["genre"] and "talk show" in cur_show["genre"].lower():
                 self.connection.action("UPDATE tv_shows SET air_by_date = ? WHERE tvdb_id = ?", [1, cur_show["tvdb_id"]])
-        
+
         self.incDBVersion()

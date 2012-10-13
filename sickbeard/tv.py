@@ -20,6 +20,7 @@ from __future__ import with_statement
 
 import os.path
 import datetime
+import time
 import threading
 import re
 import glob
@@ -72,7 +73,7 @@ class TVShow(object):
         self._isDirGood = False
 
         self.episodes = {}
-        
+
         otherShow = helpers.findCertainShow(sickbeard.showList, self.tvdbid)
         if otherShow != None:
             raise exceptions.MultipleShowObjectsException("Can't create a show if it already exists")
@@ -85,7 +86,7 @@ class TVShow(object):
         # no dir check needed if missing show dirs are created during post-processing
         if sickbeard.CREATE_MISSING_SHOW_DIRS:
             return self._location
-        
+
         if ek.ek(os.path.isdir, self._location):
             return self._location
         else:
@@ -164,7 +165,7 @@ class TVShow(object):
         self.getImages()
 
         self.writeShowNFO()
-        
+
         if not show_only:
             self.writeEpisodeNFOs()
 
@@ -238,7 +239,7 @@ class TVShow(object):
         for curResult in sqlResults:
 
             deleteEp = False
-                    
+
             curSeason = int(curResult["season"])
             curEpisode = int(curResult["episode"])
             if curSeason not in cachedSeasons:
@@ -255,11 +256,11 @@ class TVShow(object):
 
             try:
                 curEp = self.getEpisode(curSeason, curEpisode)
-                
+
                 # if we found out that the ep is no longer on TVDB then delete it from our database too
                 if deleteEp:
                     curEp.deleteEpisode()
-                
+
                 curEp.loadFromDB(curSeason, curEpisode)
                 curEp.loadFromTVDB(tvapi=t, cachedSeason=cachedSeasons[curSeason])
                 scannedEps[curSeason][curEpisode] = True
@@ -555,7 +556,7 @@ class TVShow(object):
 
             if not cache:
                 ltvdb_api_parms['cache'] = 'recache'
-            
+
             if self.lang:
                 ltvdb_api_parms['language'] = self.lang
 
@@ -679,7 +680,7 @@ class TVShow(object):
 
         # remove self from show list
         sickbeard.showList = [x for x in sickbeard.showList if x.tvdbid != self.tvdbid]
-        
+
         # clear the cache
         image_cache_dir = ek.ek(os.path.join, sickbeard.CACHE_DIR, 'images')
         for cache_file in ek.ek(glob.glob, ek.ek(os.path.join, image_cache_dir, str(self.tvdbid)+'.*')):
@@ -688,7 +689,7 @@ class TVShow(object):
 
     def populateCache(self):
         cache_inst = image_cache.ImageCache()
-        
+
         logger.log(u"Checking & filling cache for show "+self.name)
         cache_inst.fill_cache(self)
 
@@ -950,6 +951,7 @@ class TVEpisode(object):
         self._hastbn = False
         self._status = UNKNOWN
         self._tvdbid = 0
+        self._date_modify = int(time.mktime(time.localtime()))
 
         # setting any of the above sets the dirty flag
         self.dirty = True
@@ -975,6 +977,7 @@ class TVEpisode(object):
     status = property(lambda self: self._status, dirty_setter("_status"))
     tvdbid = property(lambda self: self._tvdbid, dirty_setter("_tvdbid"))
     location = property(lambda self: self._location, dirty_setter("_location"))
+    date_modify = property(lambda self: self._date_modify, dirty_setter("_date_modify"))
 
     def checkForMetaFiles(self):
 
@@ -992,7 +995,7 @@ class TVEpisode(object):
                 else:
                     new_result = False
                 cur_nfo = new_result or cur_nfo
-                
+
                 if cur_provider.episode_thumbnails:
                     new_result = cur_provider._has_episode_thumb(self)
                 else:
@@ -1027,7 +1030,7 @@ class TVEpisode(object):
             # if we failed TVDB, NFO *and* SQL then fail
             if result == False and not sqlResult:
                 raise exceptions.EpisodeNotFoundException("Couldn't find episode " + str(season) + "x" + str(episode))
-        
+
         # don't update if not needed
         if self.dirty:
             self.saveToDB()
@@ -1144,10 +1147,10 @@ class TVEpisode(object):
             if self.tvdbid != -1:
                 self.deleteEpisode()
             return False
-        
+
         #early conversion to int so that episode doesn't get marked dirty
         self.tvdbid = int(myEp["id"])
-        
+
         #don't update show status if show dir is missing, unless missing show dirs are created during post-processing
         if not ek.ek(os.path.isdir, self.show._location) and not sickbeard.CREATE_MISSING_SHOW_DIRS:
             logger.log(u"The show dir is missing, not bothering to change the episode statuses since it'd probably be invalid")
@@ -1271,6 +1274,7 @@ class TVEpisode(object):
         toReturn += "hasnfo: " + str(self.hasnfo) + "\n"
         toReturn += "hastbn: " + str(self.hastbn) + "\n"
         toReturn += "status: " + str(self.status) + "\n"
+        toReturn += "date_modify: " + str(self._date_modify) + "\n"
         return toReturn
 
 
@@ -1340,7 +1344,8 @@ class TVEpisode(object):
                         "hasnfo": self.hasnfo,
                         "hastbn": self.hastbn,
                         "status": self.status,
-                        "location": self.location}
+                        "location": self.location,
+                        "date_modify": int(time.mktime(time.localtime()))}
         controlValueDict = {"showid": self.show.tvdbid,
                             "season": self.season,
                             "episode": self.episode}
@@ -1399,9 +1404,9 @@ class TVEpisode(object):
 
         if naming_show_name == None:
             naming_show_name = sickbeard.NAMING_SHOW_NAME
-            
+
         if naming_strip_year == None:
-            naming_strip_year = sickbeard.NAMING_STRIP_YEAR     
+            naming_strip_year = sickbeard.NAMING_STRIP_YEAR
 
         if naming_ep_name == None:
             naming_ep_name = sickbeard.NAMING_EP_NAME
@@ -1420,9 +1425,9 @@ class TVEpisode(object):
 
         if naming_quality == None:
             naming_quality = sickbeard.NAMING_QUALITY
-            
+
         if naming_release_group == None:
-            naming_release_group = sickbeard.NAMING_RELEASE_GROUP    
+            naming_release_group = sickbeard.NAMING_RELEASE_GROUP
 
         if self.show.air_by_date and sickbeard.NAMING_DATES:
             try:
@@ -1442,11 +1447,11 @@ class TVEpisode(object):
 
         finalName = ""
 
-        if naming_strip_year:                                               
-            showName = re.sub("\(\w+\)$", "", self.show.name).rstrip() 
-        else:                                                               
-            showName = self.show.name                                  
-            
+        if naming_strip_year:
+            showName = re.sub("\(\w+\)$", "", self.show.name).rstrip()
+        else:
+            showName = self.show.name
+
         if naming_show_name:
             finalName += showName + config.naming_sep_type[naming_sep_type]
 
@@ -1459,7 +1464,7 @@ class TVEpisode(object):
             epStatus, epQual = Quality.splitCompositeStatus(self.status) #@UnusedVariable
             if epQual != Quality.NONE:
                 finalName += config.naming_sep_type[naming_sep_type] + Quality.qualityStrings[epQual]
-                
+
         if naming_release_group:
             if scene_release_group != None:
                 finalName += config.naming_sep_type[naming_sep_type] + scene_release_group

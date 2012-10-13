@@ -10,11 +10,12 @@
 
 #set global $topmenu="home"#
 #import os.path
-#set $sickbeard.GUI = "gui/slick/"  
+#set $sickbeard.GUI = "gui/slick/"
 #include $os.path.join($sickbeard.PROG_DIR, "gui/slick/interfaces/default/inc_top.tmpl")
 
 #set $myDB = $db.DBConnection()
 #set $today = str($datetime.date.today().toordinal())
+#set $lastDownloaded = $myDB.select("SELECT showid, max(date_modify) FROM tv_episodes GROUP BY showid")
 #set $downloadedEps = $myDB.select("SELECT showid, COUNT(*) FROM tv_episodes WHERE (status IN ("+",".join([str(x) for x in $Quality.DOWNLOADED + [$ARCHIVED]])+") OR (status IN ("+",".join([str(x) for x in $Quality.SNATCHED + $Quality.SNATCHED_PROPER])+") AND location != '')) AND season != 0 and episode != 0 AND airdate <= "+$today+" GROUP BY showid")
 #set $allEps = $myDB.select("SELECT showid, COUNT(*) FROM tv_episodes WHERE season != 0 and episode != 0 AND (airdate != 1 OR status IN ("+",".join([str(x) for x in ($Quality.DOWNLOADED + $Quality.SNATCHED + $Quality.SNATCHED_PROPER) + [$ARCHIVED]])+")) AND airdate <= "+$today+" AND status != "+str($IGNORED)+" GROUP BY showid")
 
@@ -39,16 +40,16 @@
     is: function(s) {
         return false;
     },
-    format: function(s) { 
+    format: function(s) {
         return s.replace('hd',3).replace('sd',1).replace('any',0).replace('best',2).replace('custom',4);
     },
     type: 'numeric'
 });
 
-\$.tablesorter.addParser({ 
+\$.tablesorter.addParser({
     id: 'eps',
     is: function(s) {
-        return false; 
+        return false;
     },
     format: function(s) {
         match = s.match(/^(.*)/);
@@ -67,7 +68,7 @@
     type: 'numeric'
 });
 
-\$(document).ready(function(){ 
+\$(document).ready(function(){
 
     \$("#showListTable:has(tbody tr)").tablesorter({
         sortList: [[5,1],[1,0]],
@@ -89,14 +90,14 @@
 });
 //-->
 </script>
-#if $varExists('header') 
-	<h1 class="header">$header</h1>
-#else 
-	<h1 class="title">$title</h1>
+#if $varExists('header')
+    <h1 class="header">$header</h1>
+#else
+    <h1 class="title">$title</h1>
 #end if
 <table id="showListTable" class="sickbeardTable tablesorter" cellspacing="1" border="0" cellpadding="0">
 
-  <thead><tr><th class="nowrap">Next Ep</th><th>Poster</th></td><th>Show</th><th>Network</th><th>Quality</th><th>Downloads</th><th>Active</th><th>Status</th></tr></thead>
+  <thead><tr><th class="nowrap">Next Ep</th><th>Poster</th></td><th>Show</th><th>Network</th><th>Quality</th><th>Downloads</th><th>Last download</th><th>Active</th><th>Status</th></tr></thead>
   <tfoot>
     <tr>
       <th rowspan="1" colspan="1" align="center"><a href="$sbRoot/home/addShows/">Add Show</a></th>
@@ -134,6 +135,7 @@ $myShowList.sort(lambda x, y: cmp(x.name, y.name))
 #for $curShow in $myShowList:
 #set $curEp = $curShow.nextEpisode()
 
+#set $curShowlastDownloaded = [x[1] for x in $lastDownloaded if int(x[0]) == $curShow.tvdbid]
 #set $curShowDownloads = [x[1] for x in $downloadedEps if int(x[0]) == $curShow.tvdbid]
 #set $curShowAll = [x[1] for x in $allEps if int(x[0]) == $curShow.tvdbid]
 #if len($curShowAll) != 0:
@@ -141,15 +143,18 @@ $myShowList.sort(lambda x, y: cmp(x.name, y.name))
     #set $dlStat = str($curShowDownloads[0])+" / "+str($curShowAll[0])
     #set $nom = $curShowDownloads[0]
     #set $den = $curShowAll[0]
+    #set $lastDownload = time.strftime("%Y-%m-%d %X", time.localtime($curShowlastDownloaded))
   #else
     #set $dlStat = "0 / "+str($curShowAll[0])
     #set $nom = 0
     #set $den = $curShowAll[0]
+    #set $lastDownload = ""
   #end if
 #else
   #set $dlStat = "?"
   #set $nom = 0
   #set $den = 1
+  #set $lastDownload = ""
 #end if
 
 
@@ -175,6 +180,7 @@ $myShowList.sort(lambda x, y: cmp(x.name, y.name))
         //-->
         </script>
     </td>
+    <td align="center">$lastDownload</td>
     <td align="center"><img src="$sbRoot/images/#if int($curShow.paused) == 0 and $curShow.status != "Ended" then "yes16.png\" alt=\"Y\"" else "no16.png\" alt=\"N\""# width="16" height="16" /></td>
     <td align="center">$curShow.status</td>
   </tr>
