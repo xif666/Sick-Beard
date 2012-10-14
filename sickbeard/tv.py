@@ -951,7 +951,7 @@ class TVEpisode(object):
         self._hastbn = False
         self._status = UNKNOWN
         self._tvdbid = 0
-        self._date_modify = int(time.mktime(time.localtime()))
+        self._date_modify = ""
 
         # setting any of the above sets the dirty flag
         self.dirty = True
@@ -1066,6 +1066,9 @@ class TVEpisode(object):
                 self.location = os.path.normpath(sqlResults[0]["location"])
 
             self.tvdbid = int(sqlResults[0]["tvdbid"])
+
+            if sqlResults[0]["date_modify"] != "" and sqlResults[0]["date_modify"] != None:
+                self.date_modify = int(sqlResults[0]["date_modify"])
 
             self.dirty = False
             return True
@@ -1186,10 +1189,14 @@ class TVEpisode(object):
 
         # if we have a media file then it's downloaded
         elif sickbeard.helpers.isMediaFile(self.location):
+            oldStatus = self.status
             # leave propers alone, you have to either post-process them or manually change them back
             if self.status not in Quality.SNATCHED_PROPER + Quality.DOWNLOADED + Quality.SNATCHED + [ARCHIVED]:
                 logger.log(u"5 Status changes from " + str(self.status) + " to " + str(Quality.statusFromName(self.location)), logger.DEBUG)
                 self.status = Quality.statusFromName(self.location)
+
+            if oldStatus not in Quality.DOWNLOADED and self.status in Quality.DOWNLOADED:
+                self.date_modify = int(time.mktime(time.localtime()))
 
         # shouldn't get here probably
         else:
@@ -1214,8 +1221,12 @@ class TVEpisode(object):
 
             if self.status == UNKNOWN:
                 if sickbeard.helpers.isMediaFile(self.location):
+                    oldStatus = self.status
                     logger.log(u"7 Status changes from " + str(self.status) + " to " + str(Quality.statusFromName(self.location)), logger.DEBUG)
                     self.status = Quality.statusFromName(self.location)
+
+                    if oldStatus not in Quality.DOWNLOADED and self.status in Quality.DOWNLOADED:
+                        self.date_modify = int(time.mktime(time.localtime()))
 
             nfoFile = sickbeard.helpers.replaceExtension(self.location, "nfo")
             logger.log(str(self.show.tvdbid) + ": Using NFO name " + nfoFile, logger.DEBUG)
@@ -1345,7 +1356,7 @@ class TVEpisode(object):
                         "hastbn": self.hastbn,
                         "status": self.status,
                         "location": self.location,
-                        "date_modify": int(time.mktime(time.localtime()))}
+                        "date_modify": self.date_modify}
         controlValueDict = {"showid": self.show.tvdbid,
                             "season": self.season,
                             "episode": self.episode}
