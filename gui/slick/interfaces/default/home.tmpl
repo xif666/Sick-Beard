@@ -41,7 +41,7 @@
         return false;
     },
     format: function(s) {
-        return s.replace('hd',3).replace('sd',1).replace('any',0).replace('best',2).replace('custom',4);
+        return s.replace(/hd/,3).replace(/sd/,1).replace(/any/,0).replace(/best/,2).replace(/custom/,4);
     },
     type: 'numeric'
 });
@@ -59,13 +59,22 @@
 
         var nums = match[1].split(" / ");
 
-        var finalNum = parseInt((nums[0]/nums[1])*1000)*100;
-        if (finalNum > 0)
-            finalNum += parseInt(nums[0]);
+        var finalNum = nums[1]-nums[0];
 
         return finalNum
     },
     type: 'numeric'
+});
+
+\$.tablesorter.addParser({
+    id: 'active',
+    is: function(s) {
+        return false;
+    },
+    format: function(s) {
+        return s.replace(/Y/,1).replace(/N/,0)
+    },
+    type: 'text'
 });
 
 \$(document).ready(function(){
@@ -73,9 +82,10 @@
     \$("#showListTable:has(tbody tr)").tablesorter({
         sortList: [[5,1],[1,0]],
         textExtraction: {
-            3: function(node) { return \$(node).find("span").text().toLowerCase(); },
+            1: function(node) { return \$(node).find("a").attr("title"); },
             4: function(node) { return \$(node).find("span").text(); },
-            5: function(node) { return \$(node).find("img").attr("alt"); }
+            5: function(node) { return \$(node).find(".progressbarText").text(); },
+            7: function(node) { return \$(node).find("img").attr("alt"); }
         },
         widgets: ['saveSort', 'zebra'],
         headers: {
@@ -83,7 +93,9 @@
             1: { sorter: 'loadingNames' },
             2: { sorter: 'loadingNames' },
             4: { sorter: 'quality' },
-            5: { sorter: 'eps' }
+            5: { sorter: 'eps' },
+            6: { sorter: 'isoDate' },
+            7: { sorter: 'active' }
         }
     });
 

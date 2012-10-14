@@ -1,7 +1,7 @@
 var message_url = sbRoot + '/ui/get_messages';
 $.pnotify.defaults.pnotify_width = "340px";
 $.pnotify.defaults.pnotify_history = false;
-$.pnotify.defaults.pnotify_delay = 4000;
+$.pnotify.defaults.pnotify_delay = 30000;
 
 function check_notifications() {
     $.getJSON(message_url, function(data){
@@ -14,8 +14,8 @@ function check_notifications() {
             });
         });
     });
-    
-    setTimeout(check_notifications, 3000)
+
+    setTimeout(check_notifications, 10000)
 }
 
 $(document).ready(function(){
