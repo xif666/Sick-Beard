@@ -23,6 +23,7 @@ import os
 import re
 import shlex
 import subprocess
+import time
 
 import sickbeard
 
@@ -790,6 +791,8 @@ class PostProcessor(object):
         # update the statuses before we rename so the quality goes into the name properly
         for cur_ep in [ep_obj] + ep_obj.relatedEps:
             with cur_ep.lock:
+                if cur_ep.status not in common.Quality.DOWNLOADED:
+                    cur_ep.date_modify = int(time.mktime(time.localtime()))
                 cur_ep.status = common.Quality.compositeStatus(common.DOWNLOADED, new_ep_quality)
                 cur_ep.saveToDB()
 
