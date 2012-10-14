@@ -1189,14 +1189,10 @@ class TVEpisode(object):
 
         # if we have a media file then it's downloaded
         elif sickbeard.helpers.isMediaFile(self.location):
-            oldStatus = self.status
             # leave propers alone, you have to either post-process them or manually change them back
             if self.status not in Quality.SNATCHED_PROPER + Quality.DOWNLOADED + Quality.SNATCHED + [ARCHIVED]:
                 logger.log(u"5 Status changes from " + str(self.status) + " to " + str(Quality.statusFromName(self.location)), logger.DEBUG)
                 self.status = Quality.statusFromName(self.location)
-
-            if oldStatus not in Quality.DOWNLOADED and self.status in Quality.DOWNLOADED:
-                self.date_modify = int(time.mktime(time.localtime()))
 
         # shouldn't get here probably
         else:
@@ -1221,12 +1217,8 @@ class TVEpisode(object):
 
             if self.status == UNKNOWN:
                 if sickbeard.helpers.isMediaFile(self.location):
-                    oldStatus = self.status
                     logger.log(u"7 Status changes from " + str(self.status) + " to " + str(Quality.statusFromName(self.location)), logger.DEBUG)
                     self.status = Quality.statusFromName(self.location)
-
-                    if oldStatus not in Quality.DOWNLOADED and self.status in Quality.DOWNLOADED:
-                        self.date_modify = int(time.mktime(time.localtime()))
 
             nfoFile = sickbeard.helpers.replaceExtension(self.location, "nfo")
             logger.log(str(self.show.tvdbid) + ": Using NFO name " + nfoFile, logger.DEBUG)

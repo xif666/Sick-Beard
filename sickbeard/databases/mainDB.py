@@ -178,7 +178,7 @@ class NewQualitySettings (NumericProviders):
             sickbeard.QUALITY_DEFAULT = common.BEST
 
         ### Update episode statuses
-        toUpdate = self.connection.select("SELECT episode_id, location, status, date_modify FROM tv_episodes WHERE status IN (?, ?, ?, ?, ?, ?, ?)", [common.DOWNLOADED, common.SNATCHED, PREDOWNLOADED, MISSED, BACKLOG, DISCBACKLOG, SNATCHED_BACKLOG])
+        toUpdate = self.connection.select("SELECT episode_id, location, status FROM tv_episodes WHERE status IN (?, ?, ?, ?, ?, ?, ?)", [common.DOWNLOADED, common.SNATCHED, PREDOWNLOADED, MISSED, BACKLOG, DISCBACKLOG, SNATCHED_BACKLOG])
         didUpdate = False
         for curUpdate in toUpdate:
 
@@ -187,7 +187,6 @@ class NewQualitySettings (NumericProviders):
 
             newStatus = None
             oldStatus = int(curUpdate["status"])
-            date_modify = curUpdate["date_modify"]
             if oldStatus == common.SNATCHED:
                 newStatus = common.Quality.compositeStatus(common.SNATCHED, common.Quality.UNKNOWN)
             elif oldStatus == PREDOWNLOADED:
@@ -197,11 +196,8 @@ class NewQualitySettings (NumericProviders):
             elif oldStatus == SNATCHED_BACKLOG:
                 newStatus = common.Quality.compositeStatus(common.SNATCHED, common.Quality.UNKNOWN)
 
-            if oldStatus not in common.Quality.DOWNLOADED and self.status in common.Quality.DOWNLOADED:
-                date_modify = int(time.mktime(time.localtime()))
-
             if newStatus != None:
-                self.connection.action("UPDATE tv_episodes SET status = ?, date_modify = ? WHERE episode_id = ? ", [newStatus, date_modify, curUpdate["episode_id"]])
+                self.connection.action("UPDATE tv_episodes SET status = ? WHERE episode_id = ? ", [newStatus, curUpdate["episode_id"]])
                 continue
 
             # if we get here status should be == DOWNLOADED
@@ -213,10 +209,7 @@ class NewQualitySettings (NumericProviders):
             if newQuality == common.Quality.UNKNOWN:
                 newQuality = common.Quality.assumeQuality(curUpdate["location"])
 
-            if oldStatus not in common.Quality.DOWNLOADED:
-                date_modify = int(time.mktime(time.localtime()))
-
-            self.connection.action("UPDATE tv_episodes SET status = ?, date_modify = ? WHERE episode_id = ?", [common.Quality.compositeStatus(common.DOWNLOADED, newQuality), date_modify, curUpdate["episode_id"]])
+            self.connection.action("UPDATE tv_episodes SET status = ? WHERE episode_id = ?", [common.Quality.compositeStatus(common.DOWNLOADED, newQuality), curUpdate["episode_id"]])
 
         # if no updates were done then the backup is useless
         if didUpdate:
