@@ -99,8 +99,8 @@ def processDir (dirName, nzbName=None, recurse=False):
                         returnStr += logHelper(u"Find rar file extract : "+filePath, logger.DEBUG)
                         rf.extractall(generatePathToExtract(filePath))
                         archivesPath.append(filePath)
-                    else:
-                        returnStr += logHelper(u"Find rar file PASSWORD required (skipped) : "+filePath, logger.DEBUG)
+                else:
+                    returnStr += logHelper(u"Find rar file PASSWORD required (skipped) : "+filePath, logger.WARNING)
             except rarfile.NeedFirstVolume as e:
                 returnStr += logHelper(u"Find rar file : Need to start from first volume : "+filePath, logger.DEBUG)
 
