@@ -38,16 +38,16 @@
     is: function(s) {
         return false;
     },
-    format: function(s) { 
+    format: function(s) {
         return s.replace('hd',3).replace('sd',1).replace('any',0).replace('best',2).replace('custom',4);
     },
     type: 'numeric'
 });
 
-\$.tablesorter.addParser({ 
+\$.tablesorter.addParser({
     id: 'eps',
     is: function(s) {
-        return false; 
+        return false;
     },
     format: function(s) {
         match = s.match(/^(.*)/);
@@ -66,7 +66,7 @@
     type: 'numeric'
 });
 
-\$(document).ready(function(){ 
+\$(document).ready(function(){
 
     \$("#showListTable:has(tbody tr)").tablesorter({
         sortList: [[5,1],[1,0]],
@@ -94,7 +94,7 @@
   <tfoot>
     <tr>
       <th rowspan="1" colspan="1" align="center"><a href="$sbRoot/home/addShows/">Add Show</a></th>
-      <th rowspan="1" colspan="6"></th>
+      <th rowspan="1" colspan="7"></th>
     </tr>
   </tfoot>
   <tbody>

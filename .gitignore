@@ -39,6 +39,7 @@ CHANGELOG.txt
 *.sw?
 .settings/*
 .pydevproject
+/.buildpath
 
 # OS generated files #
 ######################
@@ -50,3 +51,4 @@ ehthumbs.db
 Thumbs.db
 .directory
 *~
+

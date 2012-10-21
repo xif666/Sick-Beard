@@ -21,7 +21,9 @@ from __future__ import with_statement
 import os
 import shutil
 
-import sickbeard 
+import lib.rarfile as rarfile
+
+import sickbeard
 from sickbeard import postProcessor
 from sickbeard import db, helpers, exceptions
 
@@ -34,10 +36,13 @@ def logHelper (logMessage, logLevel=logger.MESSAGE):
     logger.log(logMessage, logLevel)
     return logMessage + u"\n"
 
+def generatePathToExtract (archiveName):
+    return archiveName + '.sickbeard.tmp'
+
 def processDir (dirName, nzbName=None, recurse=False):
     """
     Scans through the files in dirName and processes whatever media files it finds
-    
+
     dirName: The folder name to look in
     nzbName: The NZB name which resulted in this folder being downloaded
     recurse: Boolean for whether we should descend into subfolders or not
@@ -82,6 +87,24 @@ def processDir (dirName, nzbName=None, recurse=False):
             return returnStr
 
     fileList = ek.ek(os.listdir, dirName)
+    returnStr += str(fileList)
+    archivesPath = []
+    for fileName in fileList:
+        filePath = ek.ek(os.path.join, dirName, fileName)
+        if os.path.isfile(filePath) and rarfile.is_rarfile(filePath):
+            try:
+                rf = rarfile.RarFile(filePath)
+                if not rf.needs_password():
+                    if myDB.action('SELECT resource FROM history WHERE resource LIKE ?', [ filePath + '%']).fetchone() == None:
+                        returnStr += logHelper(u"Find rar file extract : "+filePath, logger.DEBUG)
+                        rf.extractall(generatePathToExtract(filePath))
+                        archivesPath.append(filePath)
+                    else:
+                        returnStr += logHelper(u"Find rar file PASSWORD required (skipped) : "+filePath, logger.DEBUG)
+            except rarfile.NeedFirstVolume as e:
+                returnStr += logHelper(u"Find rar file : Need to start from first volume : "+filePath, logger.DEBUG)
+
+    fileList = ek.ek(os.listdir, dirName)
 
     # split the list into video files and folders
     folders = filter(lambda x: ek.ek(os.path.isdir, ek.ek(os.path.join, dirName, x)), fileList)
@@ -107,7 +130,7 @@ def processDir (dirName, nzbName=None, recurse=False):
             process_result = False
             process_fail_message = ex(e)
 
-        returnStr += processor.log 
+        returnStr += processor.log
 
         # as long as the postprocessing was successful delete the old folder unless the config wants us not to
         if process_result:
@@ -124,8 +147,15 @@ def processDir (dirName, nzbName=None, recurse=False):
                     returnStr += logHelper(u"Warning: unable to remove the folder " + dirName + ": " + ex(e), logger.WARNING)
 
             returnStr += logHelper(u"Processing succeeded for "+cur_video_file_path)
-            
+
         else:
             returnStr += logHelper(u"Processing failed for "+cur_video_file_path+": "+process_fail_message, logger.WARNING)
+
+    # delete all extract archive
+    for archiveDir in archivesPath:
+        try:
+            shutil.rmtree(generatePathToExtract(archiveDir))
+        except (OSError, IOError), e:
+            returnStr += logHelper(u"Warning: unable to remove the folder " + archiveDir + ": " + ex(e), logger.WARNING)
 
     return returnStr
