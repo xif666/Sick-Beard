@@ -37,7 +37,7 @@ def logHelper (logMessage, logLevel=logger.MESSAGE):
     return logMessage + u"\n"
 
 def generatePathToExtract (archiveName):
-    return archiveName + '.sickbeard.tmp'
+    return archiveName + '.' + sickbeard.SUFFIX_EXTRACT
 
 def processDir (dirName, nzbName=None, recurse=False):
     """
@@ -122,34 +122,38 @@ def processDir (dirName, nzbName=None, recurse=False):
 
         cur_video_file_path = ek.ek(os.path.join, dirName, cur_video_file_path)
 
-        try:
-            processor = postProcessor.PostProcessor(cur_video_file_path, nzbName)
-            process_result = processor.process()
-            process_fail_message = ""
-        except exceptions.PostProcessingFailed, e:
-            process_result = False
-            process_fail_message = ex(e)
+        if myDB.action('SELECT resource FROM history WHERE resource = ?', [ cur_video_file_path ]).fetchone() == None:
 
-        returnStr += processor.log
+            try:
+                processor = postProcessor.PostProcessor(cur_video_file_path, nzbName)
+                process_result = processor.process()
+                process_fail_message = ""
+            except exceptions.PostProcessingFailed, e:
+                process_result = False
+                process_fail_message = ex(e)
 
-        # as long as the postprocessing was successful delete the old folder unless the config wants us not to
-        if process_result:
+            returnStr += processor.log
 
-            if len(videoFiles) == 1 and not sickbeard.KEEP_PROCESSED_DIR and \
-                ek.ek(os.path.normpath, dirName) != ek.ek(os.path.normpath, sickbeard.TV_DOWNLOAD_DIR) and \
-                len(remainingFolders) == 0:
+            # as long as the postprocessing was successful delete the old folder unless the config wants us not to
+            if process_result:
 
-                returnStr += logHelper(u"Deleting folder " + dirName, logger.DEBUG)
+                if len(videoFiles) == 1 and not sickbeard.KEEP_PROCESSED_DIR and \
+                    ek.ek(os.path.normpath, dirName) != ek.ek(os.path.normpath, sickbeard.TV_DOWNLOAD_DIR) and \
+                    len(remainingFolders) == 0:
 
-                try:
-                    shutil.rmtree(dirName)
-                except (OSError, IOError), e:
-                    returnStr += logHelper(u"Warning: unable to remove the folder " + dirName + ": " + ex(e), logger.WARNING)
+                    returnStr += logHelper(u"Deleting folder " + dirName, logger.DEBUG)
 
-            returnStr += logHelper(u"Processing succeeded for "+cur_video_file_path)
+                    try:
+                        shutil.rmtree(dirName)
+                    except (OSError, IOError), e:
+                        returnStr += logHelper(u"Warning: unable to remove the folder " + dirName + ": " + ex(e), logger.WARNING)
 
+                returnStr += logHelper(u"Processing succeeded for "+cur_video_file_path)
+
+            else:
+                returnStr += logHelper(u"Processing failed for "+cur_video_file_path+": "+process_fail_message, logger.WARNING)
         else:
-            returnStr += logHelper(u"Processing failed for "+cur_video_file_path+": "+process_fail_message, logger.WARNING)
+            returnStr += logHelper(u"File (" + cur_video_file_path + ") has already been processed", logger.DEBUG)
 
     # delete all extract archive
     for archiveDir in archivesPath:
