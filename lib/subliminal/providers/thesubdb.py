@@ -30,6 +30,7 @@ class TheSubDBSubtitle(Subtitle):
 
 class TheSubDBProvider(Provider):
     languages = {babelfish.Language.fromalpha2(l) for l in ['en', 'es', 'fr', 'it', 'nl', 'pl', 'pt', 'ro', 'sv', 'tr']}
+    server = 'http://thesubdb.com/'
     required_hash = 'thesubdb'
 
     def initialize(self):
