@@ -9,7 +9,7 @@ from .providers import ProviderManager
 from .subtitle import get_subtitle_path
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("subliminal")
 
 
 def list_subtitles(videos, languages, providers=None, provider_configs=None):

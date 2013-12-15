@@ -7,7 +7,7 @@ from ..exceptions import ProviderNotAvailable, InvalidSubtitle
 from ..video import Episode, Movie
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("subliminal")
 
 #: Entry point for the providers
 PROVIDER_ENTRY_POINT = 'subliminal.providers'
@@ -84,8 +84,8 @@ class Provider(object):
         :rtype: bool
 
         """
-        if not isinstance(video, cls.video_types):
-            return False
+#        if not isinstance(video, cls.video_types):
+#            return False
         if cls.required_hash is not None and cls.required_hash not in video.hashes:
             return False
         return True
@@ -170,7 +170,7 @@ class ProviderManager(object):
     """
     def __init__(self, providers=None, provider_configs=None):
         self.provider_configs = provider_configs or {}
-        self.providers = {provider_name: get_provider(provider_name) for provider_name in (providers or PROVIDERS)}
+        self.providers = {provider_name: get_provider(provider_name) for provider_name in providers}
         self.initialized_providers = {}
         self.discarded_providers = set()
 
@@ -222,12 +222,12 @@ class ProviderManager(object):
                 provider = self.get_initialized_provider(provider_name)
                 logger.info('Listing subtitles with provider %r and languages %r', provider_name, provider_languages)
                 provider_subtitles = provider.list_subtitles(video, provider_languages)
-                logger.info('Found %d subtitles', len(provider_subtitles))
+                logger.info('Found %d subtitles', len(provider_subtitles) if provider_subtitles else 0)
                 subtitles.extend(provider_subtitles)
             except ProviderNotAvailable:
                 logger.warning('Provider %r is not available, discarding it', provider_name)
                 self.discarded_providers.add(provider_name)
-            except:
+            except Exception, e:
                 logger.exception('Unexpected error in provider %r', provider_name)
         return subtitles
 

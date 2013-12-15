@@ -16,7 +16,7 @@ from ..subtitle import Subtitle, is_valid_subtitle
 from ..video import Episode
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("subliminal")
 
 
 class TVsubtitlesSubtitle(Subtitle):

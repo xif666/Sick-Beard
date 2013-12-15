@@ -16,7 +16,7 @@ from ..subtitle import Subtitle, is_valid_subtitle, compute_guess_matches
 from ..video import Episode, Movie
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("subliminal")
 
 
 class OpenSubtitlesSubtitle(Subtitle):

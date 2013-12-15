@@ -17,7 +17,7 @@ from ..subtitle import Subtitle, is_valid_subtitle, compute_guess_matches
 from ..video import Episode, Movie
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("subliminal")
 
 
 class PodnapisiSubtitle(Subtitle):
@@ -137,11 +137,8 @@ class PodnapisiProvider(Provider):
         return subtitles
 
     def list_subtitles(self, video, languages):
-        if isinstance(video, Episode):
-            return [s for l in languages for s in self.query(l, series=video.series, season=video.season,
-                                                             episode=video.episode, year=video.year)]
-        elif isinstance(video, Movie):
-            return [s for l in languages for s in self.query(l, title=video.title, year=video.year)]
+        return [s for l in languages for s in self.query(l, series=video.series, season=video.season,
+                                                         episode=video.episode, year=video.year)]
 
     def download_subtitle(self, subtitle):
         soup = self.get(subtitle.link, is_xml=False)
