@@ -19,7 +19,6 @@
 from __future__ import unicode_literals
 import datetime
 
-
 import sickbeard
 from sickbeard.common import *
 from sickbeard import notifiers
@@ -28,11 +27,13 @@ from sickbeard import helpers
 from sickbeard import encodingKludge as ek
 from sickbeard import db
 from sickbeard import history
-from lib import subliminal
-from lib.babelfish import Language
 
+from lib import subliminal
+from lib.babelfish import Language, exceptions
+from lib.babelfish.language import LANGUAGE_MATRIX
 
 SINGLE = 'und'
+
 def sortedServiceList():
     servicesMapping = dict([(x.lower(), x) for x in subliminal.providers.PROVIDERS])
 
@@ -42,14 +43,14 @@ def sortedServiceList():
     curIndex = 0
     for curService in sickbeard.SUBTITLES_SERVICES_LIST:
         if curService in servicesMapping:
-            curServiceDict = {'id': curService, 'image': curService+'.png', 'name': servicesMapping[curService], 'enabled': sickbeard.SUBTITLES_SERVICES_ENABLED[curIndex] == 1, 'url': subliminal.providers.get_provider(curService).server}
+            curServiceDict = {'id': curService, 'image': curService+'.png', 'name': servicesMapping[curService], 'enabled': sickbeard.SUBTITLES_SERVICES_ENABLED[curIndex] == 1, 'url': subliminal.providers.get_provider(curService).server, 'need_auth' : True if hasattr(subliminal.providers.get_provider(curService), 'password') else False}
             newList.append(curServiceDict)
         curIndex += 1
 
     # add any services that are missing from that list
     for curService in servicesMapping.keys():
         if curService not in [x['id'] for x in newList]:
-            curServiceDict = {'id': curService, 'image': curService+'.png', 'name': servicesMapping[curService], 'enabled': False, 'url': subliminal.providers.get_provider(curService).server}
+            curServiceDict = {'id': curService, 'image': curService+'.png', 'name': servicesMapping[curService], 'enabled': False, 'url': subliminal.providers.get_provider(curService).server, 'need_auth' : True if hasattr(subliminal.providers.get_provider(curService), 'username') else False}
             newList.append(curServiceDict)
 
     return newList
@@ -75,21 +76,23 @@ def wantedLanguages(sqlLike = False):
 def subtitlesLanguages(video_path):
     """Return a list detected subtitles for the given video file"""
     subtitle_languages = subliminal.video.scan_subtitle_languages(video_path)
+    languages = set()
     for language in subtitle_languages:
-        if language:
-            languages.add(language.alpha2)
+        languages.add(language.alpha2)
 
     return list(languages)
 
 # Return a list with languages that have alpha2 code
 def subtitleLanguageFilter():
-    return ['italian', 'english']
+    return [x for x in LANGUAGE_MATRIX if not x.alpha2 == '']
 
+    
 class SubtitlesFinder():
     """
     The SubtitlesFinder will be executed every hour but will not necessarly search
     and download subtitles. Only if the defined rule is true
     """
+    
     def run(self):
         # TODO: Put that in the __init__ before starting the thread?
         if not sickbeard.USE_SUBTITLES:
