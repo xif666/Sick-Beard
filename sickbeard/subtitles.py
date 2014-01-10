@@ -43,14 +43,14 @@ def sortedServiceList():
     curIndex = 0
     for curService in sickbeard.SUBTITLES_SERVICES_LIST:
         if curService in servicesMapping:
-            curServiceDict = {'id': curService, 'image': curService+'.png', 'name': servicesMapping[curService], 'enabled': sickbeard.SUBTITLES_SERVICES_ENABLED[curIndex] == 1, 'url': subliminal.providers.get_provider(curService).server, 'need_auth' : True if hasattr(subliminal.providers.get_provider(curService), 'password') else False}
+            curServiceDict = {'id': curService, 'image': curService+'.png', 'name': servicesMapping[curService], 'enabled': sickbeard.SUBTITLES_SERVICES_ENABLED[curIndex] == 1, 'url': subliminal.providers.get_provider(curService).server, 'need_auth' : hasattr(subliminal.providers.get_provider(curService)(), 'password')}
             newList.append(curServiceDict)
         curIndex += 1
 
     # add any services that are missing from that list
     for curService in servicesMapping.keys():
         if curService not in [x['id'] for x in newList]:
-            curServiceDict = {'id': curService, 'image': curService+'.png', 'name': servicesMapping[curService], 'enabled': False, 'url': subliminal.providers.get_provider(curService).server, 'need_auth' : True if hasattr(subliminal.providers.get_provider(curService), 'username') else False}
+            curServiceDict = {'id': curService, 'image': curService+'.png', 'name': servicesMapping[curService], 'enabled': False, 'url': subliminal.providers.get_provider(curService).server, 'need_auth' : hasattr(subliminal.providers.get_provider(curService)(), 'password')}
             newList.append(curServiceDict)
 
     return newList
