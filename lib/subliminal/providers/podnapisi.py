@@ -39,27 +39,27 @@ class PodnapisiSubtitle(Subtitle):
     def compute_matches(self, video):
         matches = set()
         # episode
-        if isinstance(video, Episode):
-            # series
-            if video.series and self.series.lower() == video.series.lower():
-                matches.add('series')
-            # season
-            if video.season and self.season == video.season:
-                matches.add('season')
-            # episode
-            if video.episode and self.episode == video.episode:
-                matches.add('episode')
+#        if isinstance(video, Episode):
+        # series
+        if video.series and self.series.lower() == video.series.lower():
+            matches.add('series')
+        # season
+        if video.season and self.season == video.season:
+            matches.add('season')
+        # episode
+        if video.episode and self.episode == video.episode:
+            matches.add('episode')
             # guess
-            for release in self.releases:
-                matches |= compute_guess_matches(video, guessit.guess_episode_info(release + '.mkv'))
-        # movie
-        elif isinstance(video, Movie):
-            # title
-            if video.title and self.title.lower() == video.title.lower():
-                matches.add('title')
-            # guess
-            for release in self.releases:
-                matches |= compute_guess_matches(video, guessit.guess_movie_info(release + '.mkv'))
+        for release in self.releases:
+            matches |= compute_guess_matches(video, guessit.guess_episode_info(release + '.mkv'))
+#        # movie
+#        elif isinstance(video, Movie):
+#            # title
+#            if video.title and self.title.lower() == video.title.lower():
+#                matches.add('title')
+#            # guess
+#            for release in self.releases:
+#                matches |= compute_guess_matches(video, guessit.guess_movie_info(release + '.mkv'))
         # year
         if self.year == video.year:
             matches.add('year')
