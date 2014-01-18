@@ -2198,7 +2198,7 @@ class ConfigSubtitles:
         return _munge(t)
 
     @cherrypy.expose
-    def saveSubtitles(self, use_subtitles=None, subtitles_plugins=None, subtitles_languages=None, subtitles_dir=None, service_order=None, subtitles_history=None, subtitles_finder_frequency=None):
+    def saveSubtitles(self, use_subtitles=None, subtitles_plugins=None, subtitles_languages=None, subtitles_dir=None, service_order=None, subtitles_services_auth = None, subtitles_history=None, subtitles_finder_frequency=None):
         results = []
 
         if subtitles_finder_frequency == '' or subtitles_finder_frequency is None:
@@ -2225,7 +2225,6 @@ class ConfigSubtitles:
             subtitles_history = 0
 
         sickbeard.USE_SUBTITLES = use_subtitles
-#        sickbeard.SUBTITLES_LANGUAGES = [lang.alpha2 for lang in subtitles.isValidLanguage(subtitles_languages.replace(' ', '').split(','))] if subtitles_languages != ''  else ''
         sickbeard.SUBTITLES_LANGUAGES = [lang for lang in subtitles_languages.replace(' ', '').split(',')]
         sickbeard.SUBTITLES_DIR = subtitles_dir
         sickbeard.SUBTITLES_HISTORY = subtitles_history
@@ -2242,7 +2241,8 @@ class ConfigSubtitles:
 
         sickbeard.SUBTITLES_SERVICES_LIST = subtitles_services_list
         sickbeard.SUBTITLES_SERVICES_ENABLED = subtitles_services_enabled
-
+        sickbeard.SUBTITLES_SERVICES_AUTH = subtitles_services_auth
+        
         sickbeard.save_config()
 
         if len(results) > 0:

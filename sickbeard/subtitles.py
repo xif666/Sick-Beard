@@ -35,16 +35,31 @@ from lib.babelfish.language import LANGUAGE_MATRIX
 SINGLE = 'und'
 
 def sortedServiceList():
+    
     servicesMapping = dict([(x.lower(), x) for x in subliminal.providers.PROVIDERS])
 
     newList = []
-
+    authDict = authServiceDict()
+    
     # add all services in the priority list, in order
     curIndex = 0
     for curService in sickbeard.SUBTITLES_SERVICES_LIST:
         if curService in servicesMapping:
-            curServiceDict = {'id': curService, 'image': curService+'.png', 'name': servicesMapping[curService], 'enabled': sickbeard.SUBTITLES_SERVICES_ENABLED[curIndex] == 1, 'url': subliminal.providers.get_provider(curService).server, 'need_auth' : hasattr(subliminal.providers.get_provider(curService)(), 'password')}
+            curServiceDict = {'id': curService, 
+                              'image': curService+'.png', 
+                              'name': servicesMapping[curService], 
+                              'enabled': sickbeard.SUBTITLES_SERVICES_ENABLED[curIndex] == 1, 
+                              'url': subliminal.providers.get_provider(curService).server, 
+                              'need_auth': hasattr(subliminal.providers.get_provider(curService)(), 'password'),
+                              'username': '',
+                              'password': ''
+                              }
+
+            if curServiceDict['need_auth'] and authDict.has_key(curServiceDict['id']):
+                curServiceDict.update(authDict[curServiceDict['id']])
+        
             newList.append(curServiceDict)
+        
         curIndex += 1
 
     # add any services that are missing from that list
@@ -54,7 +69,20 @@ def sortedServiceList():
             newList.append(curServiceDict)
 
     return newList
-    
+
+def authServiceDict():
+    authDict = {}
+
+    for auth in sickbeard.SUBTITLES_SERVICES_AUTH.split('!!!'):
+        fieldList = auth.split('|')
+        
+        if fieldList == ['']: continue
+        
+        auth = {fieldList[0]: {'username': fieldList[1], 'password': fieldList[2]}}
+        authDict.update(auth)
+        
+    return authDict
+        
 def getEnabledServiceList():
     return [x['name'] for x in sortedServiceList() if x['enabled']]
     

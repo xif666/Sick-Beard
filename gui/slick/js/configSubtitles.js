@@ -5,7 +5,7 @@ $(document).ready(function(){
             var serviceName = $(this).attr('id');
             var selectedService = $('#editAService :selected').val();
 
-            if (selectedService+'Div' == serviceName)
+            if (selectedService == serviceName)
                 $(this).show();
             else
                 $(this).hide();
@@ -44,6 +44,23 @@ $(document).ready(function(){
             $("#service_order").val(finalArr.join(' '));
     }
 
+	//var subServices = new Array();
+	
+    $.fn.makeAuthServiceString = function() {
+		var subStrings;
+		
+		$('.serviceDiv').each(function() {
+        	var service = $(this).attr('id')
+        	var uname = $('#' + service + '_username').val();
+        	var passw = $('#' + service + '_password').val();
+
+            subStrings = service+'|'+uname+'|'+passw+'!!!';
+		});
+		
+		$('#subtitles_services_auth').val(subStrings);
+		var a =  1;
+    }
+    
     $('#editAService').change(function(){
         $(this).showHideServices();
     });
@@ -52,6 +69,11 @@ $(document).ready(function(){
         $(this).refreshServiceList();
     }); 
     
+    $('.sub_passw, .sub_uname').change(function(){
+    	var a;
+    	$(this).makeAuthServiceString();
+    });
+
 
     // initialization stuff
 

@@ -7,6 +7,9 @@
 #set global $sbPath="../.."
 
 #set global $topmenu="config"
+
+#set global $service_list = $subtitles.sortedServiceList()
+
 #import os.path
 #include $os.path.join($sickbeard.PROG_DIR, "gui/slick/interfaces/default/inc_top.tmpl")
 
@@ -115,15 +118,15 @@
                 <div id="core-component-group2" class="component-group clearfix">
 
                     <div class="component-group-desc">
-                        <h3>Subtitle Plugins</h3>
-                        <p>Check off and drag the plugins into the order you want them to be used.</p>
-                        <p class="note">At least one plugin is required.</p>
+                        <h3>Subtitle Services</h3>
+                        <p>Check off and drag the subtitle services into the order you want them to be used.</p>
+                        <p class="note">At least one service is required.</p>
                         <p class="note"><span style="color: #654B24; font-size: 16px;">*</span> Need Username/Password</p>
                     </div>
 
                     <fieldset class="component-group-list" style="margin-left: 50px; margin-top:36px">
                         <ul id="service_order_list">
-                        #for $curService in $sickbeard.subtitles.sortedServiceList():
+                        #for $curService in $service_list:
                             #set $curName = $curService.id
                           <li class="ui-state-default" id="$curName">
                             <input type="checkbox" id="enable_$curName" class="service_enabler" #if $curService.enabled then "checked=\"checked\"" else ""#/>
@@ -143,24 +146,56 @@
                 </div><!-- /component-group2 //-->
 
                 <div id="core-component-group3" class="component-group clearfix">
-					#for $curService in [x for x in $sickbeard.subtitles.sortedServiceList() if x['need_auth']]:
-					<fieldset class="component-group-list">
-					<div class="providerDiv" id="${curService.id}Div">
+
+                    <div class="component-group-desc">
+                        <h3>Configure Built-In<br />Subtitle Services</h3>
+                        <p>You need to subscribe to listed service to obtain an username and password.</p>
+                    </div>
+
+                    <fieldset class="component-group-list">
+                        <div class="field-pair">
+                            <label class="clearfix" for="editAProvider">
+                                <span class="component-title jumbo">Configure Provider:</span>
+                                <span class="component-desc">
+                                #if $service_list:
+                                <input type="hidden" name="subtitles_services_auth" id="subtitles_services_auth" value="$sickbeard.SUBTITLES_SERVICES_AUTH"/>
+                                <select id="editAService">
+                               		#for $curService in $service_list:
+                               			#if $curService['need_auth']
+                               				<option value="$curService.id">$curService.name</option>
+                                    	#end if
+                                    #end for
+                                </select>
+                                #else:
+                                	No providers available to configure.
+                                #end if                                
+								</span>
+                            </label>
+                        </div>								
+
+<!-- start div for editing services //-->
+#for $curService in $service_list:
+	#if not $curService['need_auth']:
+		#continue
+	#end if		
+					<div class="serviceDiv" id="${curService.id}">
 					                        <div class="field-pair">
 					                            <label class="clearfix">
 					                                <span class="component-title">Username:</span>
-					                            	<input class="component-desc" type="text" id="${curService.id}_username" size="40"/>
+					                            	<input class="component-desc sub_uname" type="text" id="${curService.id}_username" value="$curService.username" size="40"/>
 					                            </label>
 					                        </div>
 					                        <div class="field-pair">
 					                            <label class="clearfix">
 					                                <span class="component-title">Password:</span>
-					                                <input class="component-desc" type="text" id="${curService.id}_password" size="40"/>
+					                                <input class="component-desc sub_passw" type="text" id="${curService.id}_password" value="$curService.password" size="40"/>
 					                            </label>
 					                        </div>
 					</div>
+#end for
+	               	<br/><input type="submit" class="btn config_submitter" value="Save Changes" /><br/>
+
 					</fieldset>
-					#end for
                 </div><!-- /component-group3 //-->
 
 	            <br/><input type="submit" class="btn config_submitter" value="Save Changes" /><br/>

@@ -1194,7 +1194,7 @@ class TVEpisode(object):
 
             need_languages = set(Language.fromalpha2(x) for x in sickbeard.SUBTITLES_LANGUAGES) - set(self.subtitles)
             video = subliminal.scan_videos([self.location], subtitles=True, embedded_subtitles=True)
-            subtitles = subliminal.api.download_best_subtitles(video, languages=need_languages, providers=sickbeard.subtitles.getEnabledServiceList())
+            subtitles = subliminal.api.download_best_subtitles(video, languages=need_languages, providers=sickbeard.subtitles.getEnabledServiceList(), provider_configs=sickbeard.subtitles.authServiceDict())
             subliminal.api.save_subtitles(subtitles)
 #            if sickbeard.SUBTITLES_DIR:
 #                for video in subtitles:
