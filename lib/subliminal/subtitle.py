@@ -63,13 +63,13 @@ class Subtitle(object):
             score = video.scores['hash']
         else:
             # remove equivalences
-            if isinstance(video, Episode):
-                if 'imdb_id' in matches:
-                    matches -= {'series', 'tvdb_id', 'season', 'episode', 'title', 'year'}
-                if 'tvdb_id' in matches:
-                    matches -= {'series', 'year'}
-                if 'title' in matches:
-                    matches -= {'season', 'episode'}
+#            if isinstance(video, Episode):
+            if 'imdb_id' in matches:
+                matches -= {'series', 'tvdb_id', 'season', 'episode', 'title', 'year'}
+            if 'tvdb_id' in matches:
+                matches -= {'series', 'year'}
+            if 'title' in matches:
+                matches -= {'season', 'episode'}
             # add other scores
             score += sum((video.scores[match] for match in matches))
         logger.info('Computed score %d with matches %r', score, initial_matches)
@@ -128,23 +128,23 @@ def compute_guess_matches(video, guess):
 
     """
     matches = set()
-    if isinstance(video, Episode):
-        # Series
-        if video.series and 'series' in guess and guess['series'].lower() == video.series.lower():
-            matches.add('series')
-        # Season
-        if video.season and 'seasonNumber' in guess and guess['seasonNumber'] == video.season:
-            matches.add('season')
-        # Episode
-        if video.episode and 'episodeNumber' in guess and guess['episodeNumber'] == video.episode:
-            matches.add('episode')
-        # Year
-        if video.year == guess.get('year'):  # count "no year" as an information
-            matches.add('year')
-    elif isinstance(video, Movie):
-        # Year
-        if video.year and 'year' in guess and guess['year'] == video.year:
-            matches.add('year')
+#    if isinstance(video, Episode):
+    # Series
+    if video.series and 'series' in guess and guess['series'].lower() == video.series.lower():
+        matches.add('series')
+    # Season
+    if video.season and 'seasonNumber' in guess and guess['seasonNumber'] == video.season:
+        matches.add('season')
+    # Episode
+    if video.episode and 'episodeNumber' in guess and guess['episodeNumber'] == video.episode:
+        matches.add('episode')
+    # Year
+    if video.year == guess.get('year'):  # count "no year" as an information
+        matches.add('year')
+#    elif isinstance(video, Movie):
+#        # Year
+#        if video.year and 'year' in guess and guess['year'] == video.year:
+#            matches.add('year')
     # Title
     if video.title and 'title' in guess and guess['title'].lower() == video.title.lower():
         matches.add('title')

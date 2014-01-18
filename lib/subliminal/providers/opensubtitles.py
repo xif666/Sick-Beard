@@ -48,28 +48,28 @@ class OpenSubtitlesSubtitle(Subtitle):
     def compute_matches(self, video):
         matches = set()
         # episode
-        if isinstance(video, Episode) and self.movie_kind == 'episode':
-            # series
-            if video.series and self.series_name.lower() == video.series.lower():
-                matches.add('series')
-            # season
-            if video.season and self.series_season == video.season:
-                matches.add('season')
-            # episode
-            if video.episode and self.series_episode == video.episode:
-                matches.add('episode')
-            # guess
-            matches |= compute_guess_matches(video, guessit.guess_episode_info(self.movie_release_name + '.mkv'))
+#        if isinstance(video, Episode) and self.movie_kind == 'episode':
+        # series
+        if video.series and self.series_name.lower() == video.series.lower():
+            matches.add('series')
+        # season
+        if video.season and self.series_season == video.season:
+            matches.add('season')
+        # episode
+        if video.episode and self.series_episode == video.episode:
+            matches.add('episode')
+        # guess
+        matches |= compute_guess_matches(video, guessit.guess_episode_info(self.movie_release_name + '.mkv'))
         # movie
-        elif isinstance(video, Movie) and self.movie_kind == 'movie':
-            # year
-            if video.year and self.movie_year == video.year:
-                matches.add('year')
-            # guess
-            matches |= compute_guess_matches(video, guessit.guess_movie_info(self.movie_release_name + '.mkv'))
-        else:
-            logger.info('%r is not a valid movie_kind for %r', self.movie_kind, video)
-            return matches
+#        elif isinstance(video, Movie) and self.movie_kind == 'movie':
+#            # year
+#            if video.year and self.movie_year == video.year:
+#                matches.add('year')
+#            # guess
+#            matches |= compute_guess_matches(video, guessit.guess_movie_info(self.movie_release_name + '.mkv'))
+#        else:
+#            logger.info('%r is not a valid movie_kind for %r', self.movie_kind, video)
+#            return matches
         # hash
         if 'opensubtitles' in video.hashes and self.hash == video.hashes['opensubtitles']:
             matches.add('hash')
