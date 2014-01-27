@@ -30,7 +30,7 @@ from threading import Lock
 
 # apparently py2exe won't build these unless they're imported somewhere
 from sickbeard import providers, metadata
-from providers import ezrss, tvtorrents, btn, newznab, womble, thepiratebay, torrentleech, kat, publichd, iptorrents, omgwtfnzbs, scc, torrentday, hdbits
+from providers import ezrss, tvtorrents, btn, newznab, womble, thepiratebay, torrentleech, kat, publichd, iptorrents, omgwtfnzbs, scc, torrentday, hdbits, nextgen
 from sickbeard.config import CheckSection, check_setting_int, check_setting_str, ConfigMigrator
 
 
@@ -129,7 +129,7 @@ SORT_ARTICLE = None
 USE_BANNER = None
 USE_LISTVIEW = None
 METADATA_XBMC = None
-METADATA_XBMC_V12 = None
+METADATA_XBMC_12PLUS = None
 METADATA_MEDIABROWSER = None
 METADATA_PS3 = None
 METADATA_WDTV = None
@@ -200,6 +200,11 @@ IPTORRENTS = False
 IPTORRENTS_USERNAME = None
 IPTORRENTS_PASSWORD = None
 IPTORRENTS_FREELEECH = False
+
+NEXTGEN = False
+NEXTGEN_USERNAME = None
+NEXTGEN_PASSWORD = None
+NEXTGEN_FREELEECH = False
 
 KAT = None
 KAT_VERIFIED = False
@@ -395,6 +400,10 @@ COMING_EPS_LAYOUT = None
 COMING_EPS_DISPLAY_PAUSED = None
 COMING_EPS_SORT = None
 COMING_EPS_MISSED_RANGE = None
+DATE_PRESET = None
+TIME_PRESET = None
+TIME_PRESET_W_SECONDS = None
+
 
 USE_SUBTITLES = False
 SUBTITLES_LANGUAGES = []
@@ -441,6 +450,7 @@ def initialize(consoleLogging=True):
                 THEPIRATEBAY, THEPIRATEBAY_TRUSTED, THEPIRATEBAY_PROXY, THEPIRATEBAY_PROXY_URL, THEPIRATEBAY_BLACKLIST, THEPIRATEBAY_OPTIONS, TORRENTLEECH, TORRENTLEECH_USERNAME, TORRENTLEECH_PASSWORD, TORRENTLEECH_OPTIONS, \
                 IPTORRENTS, IPTORRENTS_USERNAME, IPTORRENTS_PASSWORD, IPTORRENTS_FREELEECH, IPTORRENTS_OPTIONS, KAT, KAT_VERIFIED, KAT_OPTIONS, PUBLICHD, PUBLICHD_OPTIONS, SCC, SCC_USERNAME, SCC_PASSWORD, SCC_OPTIONS, TORRENTDAY, TORRENTDAY_USERNAME, TORRENTDAY_PASSWORD, TORRENTDAY_UID, TORRENTDAY_HASH, TORRENTDAY_FREELEECH, TORRENTDAY_OPTIONS, \
                 HDBITS, HDBITS_USERNAME, HDBITS_PASSKEY, HDBITS_OPTIONS, TORRENT_DIR, USENET_RETENTION, SOCKET_TIMEOUT, SEARCH_FREQUENCY, DEFAULT_SEARCH_FREQUENCY, BACKLOG_SEARCH_FREQUENCY, \
+                NEXTGEN, NEXTGEN_USERNAME, NEXTGEN_PASSWORD, NEXTGEN_FREELEECH, NEXTGEN_OPTIONS, \
                 QUALITY_DEFAULT, FLATTEN_FOLDERS_DEFAULT, SUBTITLES_DEFAULT, STATUS_DEFAULT, \
                 GROWL_NOTIFY_ONSNATCH, GROWL_NOTIFY_ONDOWNLOAD, GROWL_NOTIFY_ONSUBTITLEDOWNLOAD, TWITTER_NOTIFY_ONSNATCH, TWITTER_NOTIFY_ONDOWNLOAD, TWITTER_NOTIFY_ONSUBTITLEDOWNLOAD, \
                 USE_GROWL, GROWL_HOST, GROWL_PASSWORD, USE_PROWL, PROWL_NOTIFY_ONSNATCH, PROWL_NOTIFY_ONDOWNLOAD, PROWL_NOTIFY_ONSUBTITLEDOWNLOAD, PROWL_API, PROWL_PRIORITY, PROG_DIR, \
@@ -459,9 +469,10 @@ def initialize(consoleLogging=True):
                 USE_LIBNOTIFY, LIBNOTIFY_NOTIFY_ONSNATCH, LIBNOTIFY_NOTIFY_ONDOWNLOAD, LIBNOTIFY_NOTIFY_ONSUBTITLEDOWNLOAD, USE_NMJ, NMJ_HOST, NMJ_DATABASE, NMJ_MOUNT, USE_NMJv2, NMJv2_HOST, NMJv2_DATABASE, NMJv2_DBLOC, USE_SYNOINDEX, \
                 USE_SYNOLOGYNOTIFIER, SYNOLOGYNOTIFIER_NOTIFY_ONSNATCH, SYNOLOGYNOTIFIER_NOTIFY_ONDOWNLOAD, SYNOLOGYNOTIFIER_NOTIFY_ONSUBTITLEDOWNLOAD, \
                 USE_EMAIL, EMAIL_HOST, EMAIL_PORT, EMAIL_TLS, EMAIL_USER, EMAIL_PASSWORD, EMAIL_FROM, EMAIL_NOTIFY_ONSNATCH, EMAIL_NOTIFY_ONDOWNLOAD, EMAIL_NOTIFY_ONSUBTITLEDOWNLOAD, EMAIL_LIST, \
-                USE_BANNER, USE_LISTVIEW, METADATA_XBMC, METADATA_XBMC_V12, METADATA_MEDIABROWSER, METADATA_PS3, METADATA_SYNOLOGY, METADATA_MEDE8ER, metadata_provider_dict, \
+                USE_BANNER, USE_LISTVIEW, METADATA_XBMC, METADATA_XBMC_12PLUS, METADATA_MEDIABROWSER, METADATA_PS3, METADATA_SYNOLOGY, METADATA_MEDE8ER, metadata_provider_dict, \
                 NEWZBIN, NEWZBIN_USERNAME, NEWZBIN_PASSWORD, GIT_PATH, MOVE_ASSOCIATED_FILES, \
-                GUI_NAME, HOME_LAYOUT, HISTORY_LAYOUT, DISPLAY_SHOW_SPECIALS, COMING_EPS_LAYOUT, COMING_EPS_SORT, COMING_EPS_DISPLAY_PAUSED, COMING_EPS_MISSED_RANGE, METADATA_WDTV, METADATA_TIVO, IGNORE_WORDS,  CALENDAR_UNPROTECTED, CREATE_MISSING_SHOW_DIRS, \
+                GUI_NAME, HOME_LAYOUT, HISTORY_LAYOUT, DISPLAY_SHOW_SPECIALS, COMING_EPS_LAYOUT, COMING_EPS_SORT, COMING_EPS_DISPLAY_PAUSED, COMING_EPS_MISSED_RANGE, DATE_PRESET, TIME_PRESET, TIME_PRESET_W_SECONDS, \
+                METADATA_WDTV, METADATA_TIVO, IGNORE_WORDS,  CALENDAR_UNPROTECTED, CREATE_MISSING_SHOW_DIRS, \
                 ADD_SHOWS_WO_DIR, USE_SUBTITLES, SUBTITLES_LANGUAGES, SUBTITLES_DIR, SUBTITLES_SERVICES_LIST, SUBTITLES_SERVICES_ENABLED, SUBTITLES_SERVICES_AUTH, SUBTITLES_HISTORY, SUBTITLES_FINDER_FREQUENCY, subtitlesFinderScheduler, \
                 USE_FAILED_DOWNLOADS, DELETE_FAILED, ANON_REDIRECT, LOCALHOST_IP
 
@@ -516,7 +527,7 @@ def initialize(consoleLogging=True):
         
         
         LOCALHOST_IP = check_setting_str(CFG, 'General', 'localhost_ip', '')
-        ANON_REDIRECT = check_setting_str(CFG, 'General', 'anon_redirect', 'http://derefer.me/?')
+        ANON_REDIRECT = check_setting_str(CFG, 'General', 'anon_redirect', 'http://dereferer.org/?')
         # attempt to help prevent users from breaking links by using a bad url 
         if not ANON_REDIRECT.endswith('?'):
             ANON_REDIRECT = ''
@@ -647,6 +658,11 @@ def initialize(consoleLogging=True):
         IPTORRENTS_PASSWORD = check_setting_str(CFG, 'IPTORRENTS', 'iptorrents_password', '')
         IPTORRENTS_FREELEECH = bool(check_setting_int(CFG, 'IPTORRENTS', 'iptorrents_freeleech', 0))
         IPTORRENTS_OPTIONS = check_setting_str(CFG, 'IPTORRENTS', 'iptorrents_options', '')
+
+        NEXTGEN = bool(check_setting_int(CFG, 'NEXTGEN', 'nextgen', 0))
+        NEXTGEN_USERNAME = check_setting_str(CFG, 'NEXTGEN', 'nextgen_username', '')
+        NEXTGEN_PASSWORD = check_setting_str(CFG, 'NEXTGEN', 'nextgen_password', '')
+        NEXTGEN_OPTIONS = check_setting_str(CFG, 'NEXTGEN', 'nextgen_options', '') 
 
         KAT = bool(check_setting_int(CFG, 'KAT', 'kat', 0))
         KAT_VERIFIED = bool(check_setting_int(CFG, 'KAT', 'kat_verified', 1))
@@ -847,7 +863,7 @@ def initialize(consoleLogging=True):
         
         CALENDAR_UNPROTECTED = bool(check_setting_int(CFG, 'General', 'calendar_unprotected', 0))
 
-        EXTRA_SCRIPTS = [x for x in check_setting_str(CFG, 'General', 'extra_scripts', '').split('|') if x]
+        EXTRA_SCRIPTS = [x.strip() for x in check_setting_str(CFG, 'General', 'extra_scripts', '').split('|') if x.strip()]
 
         USE_BANNER = bool(check_setting_int(CFG, 'General', 'use_banner', 0))
         USE_LISTVIEW = bool(check_setting_int(CFG, 'General', 'use_listview', 0))
@@ -893,7 +909,7 @@ def initialize(consoleLogging=True):
         # this is the normal codepath for metadata config
         else:
             METADATA_XBMC = check_setting_str(CFG, 'General', 'metadata_xbmc', '0|0|0|0|0|0')
-            METADATA_XBMC_V12 = check_setting_str(CFG, 'General', 'metadata_xbmc_v12', '0|0|0|0|0|0')
+            METADATA_XBMC_12PLUS = check_setting_str(CFG, 'General', 'metadata_xbmc_12plus', '0|0|0|0|0|0')
             METADATA_MEDIABROWSER = check_setting_str(CFG, 'General', 'metadata_mediabrowser', '0|0|0|0|0|0')
             METADATA_PS3 = check_setting_str(CFG, 'General', 'metadata_ps3', '0|0|0|0|0|0')
             METADATA_WDTV = check_setting_str(CFG, 'General', 'metadata_wdtv', '0|0|0|0|0|0')
@@ -902,7 +918,7 @@ def initialize(consoleLogging=True):
             METADATA_MEDE8ER = check_setting_str(CFG, 'General', 'metadata_mede8er', '0|0|0|0|0|0')
 
             for cur_metadata_tuple in [(METADATA_XBMC, metadata.xbmc),
-                                       (METADATA_XBMC_V12, metadata.xbmc_v12),
+                                       (METADATA_XBMC_12PLUS, metadata.xbmc_12plus),
                                        (METADATA_MEDIABROWSER, metadata.mediabrowser),
                                        (METADATA_PS3, metadata.ps3),
                                        (METADATA_WDTV, metadata.wdtv),
@@ -925,6 +941,9 @@ def initialize(consoleLogging=True):
         COMING_EPS_DISPLAY_PAUSED = bool(check_setting_int(CFG, 'GUI', 'coming_eps_display_paused', 0))
         COMING_EPS_SORT = check_setting_str(CFG, 'GUI', 'coming_eps_sort', 'date')
         COMING_EPS_MISSED_RANGE = check_setting_int(CFG, 'GUI', 'coming_eps_missed_range', 7)
+        DATE_PRESET = check_setting_str(CFG, 'GUI', 'date_preset', '%x')
+        TIME_PRESET_W_SECONDS = check_setting_str(CFG, 'GUI', 'time_preset', '%I:%M:%S %p')
+        TIME_PRESET = TIME_PRESET_W_SECONDS.replace(u":%S",u"") 
 
         NEWZNAB_DATA = check_setting_str(CFG, 'Newznab', 'newznab_data', '')
         newznabProviderList = providers.getNewznabProviderList(NEWZNAB_DATA)        
@@ -1301,7 +1320,7 @@ def save_config():
     new_config['General']['use_banner'] = int(USE_BANNER)
     new_config['General']['use_listview'] = int(USE_LISTVIEW)
     new_config['General']['metadata_xbmc'] = metadata_provider_dict['XBMC'].get_config()
-    new_config['General']['metadata_xbmc_v12'] = metadata_provider_dict['XBMC v12+'].get_config() 
+    new_config['General']['metadata_xbmc_12plus'] = metadata_provider_dict['XBMC 12+'].get_config() 
     new_config['General']['metadata_mediabrowser'] = metadata_provider_dict['MediaBrowser'].get_config()
     new_config['General']['metadata_ps3'] = metadata_provider_dict['Sony PS3'].get_config()
     new_config['General']['metadata_wdtv'] = metadata_provider_dict['WDTV'].get_config()
@@ -1365,6 +1384,12 @@ def save_config():
     new_config['IPTORRENTS']['iptorrents_freeleech'] = int(IPTORRENTS_FREELEECH)
     new_config['IPTORRENTS']['iptorrents_options'] = IPTORRENTS_OPTIONS
 
+    new_config['NEXTGEN'] = {}
+    new_config['NEXTGEN']['nextgen'] = int(NEXTGEN)
+    new_config['NEXTGEN']['nextgen_username'] = NEXTGEN_USERNAME
+    new_config['NEXTGEN']['nextgen_password'] = helpers.encrypt(NEXTGEN_PASSWORD, ENCRYPTION_VERSION)
+    new_config['NEXTGEN']['nextgen_options'] = NEXTGEN_OPTIONS    
+	
     new_config['KAT'] = {}
     new_config['KAT']['kat'] = int(KAT)
     new_config['KAT']['kat_verified'] = int(KAT_VERIFIED)
@@ -1587,6 +1612,8 @@ def save_config():
     new_config['GUI']['coming_eps_display_paused'] = int(COMING_EPS_DISPLAY_PAUSED)
     new_config['GUI']['coming_eps_sort'] = COMING_EPS_SORT
     new_config['GUI']['coming_eps_missed_range'] = int(COMING_EPS_MISSED_RANGE)
+    new_config['GUI']['date_preset'] = DATE_PRESET
+    new_config['GUI']['time_preset'] = TIME_PRESET_W_SECONDS
 
     new_config['Subtitles'] = {}
     new_config['Subtitles']['use_subtitles'] = int(USE_SUBTITLES)

@@ -117,9 +117,11 @@ class PageTemplate (Template):
             { 'title': logPageTitle,      'key': 'errorlogs'      },
         ]
 
+
 def redirect(abspath, *args, **KWs):
     assert abspath[0] == '/'
     raise cherrypy.HTTPRedirect(sickbeard.WEB_ROOT + abspath, *args, **KWs)
+
 
 class TVDBWebUI:
     def __init__(self, config, log=None):
@@ -134,8 +136,10 @@ class TVDBWebUI:
             showDirList += "showDir="+curShowDir+"&"
         redirect("/home/addShows/addShow?" + showDirList + "seriesList=" + searchList)
 
+
 def _munge(string):
     return unicode(string).encode('utf-8', 'xmlcharrefreplace')
+
 
 def _genericMessage(subject, message):
     t = PageTemplate(file="genericMessage.tmpl")
@@ -161,17 +165,20 @@ def _getEpisode(show, season, episode):
 
     return epObj
 
+
 ManageMenu = [
-    { 'title': 'Backlog Overview',          'path': 'manage/backlogOverview' },
-    { 'title': 'Manage Searches',           'path': 'manage/manageSearches'  },
-    { 'title': 'Manage Torrents',           'path': 'manage/manageTorrents'  },
-    { 'title': 'Episode Status Management', 'path': 'manage/episodeStatuses' },
+    { 'title': 'Backlog Overview',          'path': 'manage/backlogOverview/' },
+    { 'title': 'Manage Searches',           'path': 'manage/manageSearches/'  },
+    { 'title': 'Manage Torrents',           'path': 'manage/manageTorrents/'  },
+    { 'title': 'Episode Status Management', 'path': 'manage/episodeStatuses/' },
 ]
+
 if sickbeard.USE_SUBTITLES:
     ManageMenu.append({ 'title': 'Missed Subtitle Management', 'path': 'manage/subtitleMissed' })
 
 if sickbeard.USE_FAILED_DOWNLOADS:
     ManageMenu.append({ 'title': 'Failed Downloads', 'path': 'manage/failedDownloads' })
+
 
 class ManageSearches:
 
@@ -196,7 +203,7 @@ class ManageSearches:
             ui.notifications.message('Episode search started',
                           'Note: RSS feeds may not be updated if retrieved recently')
 
-        redirect("/manage/manageSearches")
+        redirect("/manage/manageSearches/")
 
     @cherrypy.expose
     def pauseBacklog(self, paused=None):
@@ -205,7 +212,7 @@ class ManageSearches:
         else:
             sickbeard.searchQueueScheduler.action.unpause_backlog() #@UndefinedVariable
 
-        redirect("/manage/manageSearches")
+        redirect("/manage/manageSearches/")
 
     @cherrypy.expose
     def forceVersionCheck(self):
@@ -215,7 +222,7 @@ class ManageSearches:
         if result:
             logger.log(u"Forcing version check")
 
-        redirect("/manage/manageSearches")
+        redirect("/manage/manageSearches/")
 
 
 class Manage:
@@ -426,7 +433,7 @@ class Manage:
                 show = sickbeard.helpers.findCertainShow(sickbeard.showList, int(cur_tvdb_id))
                 subtitles = show.getEpisode(int(season), int(episode)).downloadSubtitles()
 
-        redirect('/manage/subtitleMissed')
+        redirect('/manage/subtitleMissed/')
 
     @cherrypy.expose
     def backlogShow(self, tvdb_id):
@@ -436,7 +443,7 @@ class Manage:
         if show_obj:
             sickbeard.backlogSearchScheduler.action.searchBacklog([show_obj]) #@UndefinedVariable
 
-        redirect("/manage/backlogOverview")
+        redirect("/manage/backlogOverview/")
 
     @cherrypy.expose
     def backlogOverview(self):
@@ -486,7 +493,7 @@ class Manage:
         t.submenu = ManageMenu
 
         if not toEdit:
-            redirect("/manage")
+            redirect("/manage/")
 
         showIDs = toEdit.split("|")
         showList = []
@@ -613,7 +620,7 @@ class Manage:
             ui.notifications.error('%d error%s while saving changes:' % (len(errors), "" if len(errors) == 1 else "s"),
                         " ".join(errors))
 
-        redirect("/manage")
+        redirect("/manage/")
 
     @cherrypy.expose
     def massUpdate(self, toUpdate=None, toRefresh=None, toRename=None, toDelete=None, toMetadata=None, toSubtitle=None):
@@ -722,7 +729,7 @@ class Manage:
             ui.notifications.message("The following actions were queued:",
                           messageDetail)
 
-        redirect("/manage")
+        redirect("/manage/")
 
     @cherrypy.expose
     def manageTorrents(self):
@@ -852,7 +859,7 @@ class History:
         myDB = db.DBConnection()
         myDB.action("DELETE FROM history WHERE 1=1")
         ui.notifications.message('History cleared')
-        redirect("/history")
+        redirect("/history/")
 
 
     @cherrypy.expose
@@ -861,7 +868,7 @@ class History:
         myDB = db.DBConnection()
         myDB.action("DELETE FROM history WHERE date < "+str((datetime.datetime.today()-datetime.timedelta(days=30)).strftime(history.dateFormat)))
         ui.notifications.message('Removed history entries greater than 30 days old')
-        redirect("/history")
+        redirect("/history/")
 
 ConfigMenu = [
     { 'title': 'General',           'path': 'config/general/'          },
@@ -944,7 +951,7 @@ class ConfigGeneral:
     def saveGeneral(self, log_dir=None, web_port=None, web_log=None, encryption_version=None, web_ipv6=None,
                     update_shows_on_start=None, launch_browser=None, web_username=None, use_api=None, api_key=None,
                     web_password=None, version_notify=None, enable_https=None, https_cert=None, https_key=None, sort_article=None,
-                    anon_redirect=None, git_path=None, calendar_unprotected=None):
+                    anon_redirect=None, git_path=None, calendar_unprotected=None, date_preset=None, time_preset=None):
 
         results = []
 
@@ -1003,6 +1010,13 @@ class ConfigGeneral:
         sickbeard.ENCRYPTION_VERSION = encryption_version
         sickbeard.WEB_USERNAME = web_username
         sickbeard.WEB_PASSWORD = web_password
+
+        if date_preset:
+            sickbeard.DATE_PRESET = date_preset
+        
+        if time_preset:
+            sickbeard.TIME_PRESET_W_SECONDS = time_preset
+            sickbeard.TIME_PRESET = sickbeard.TIME_PRESET_W_SECONDS.replace(u":%S",u"")
 
         if not config.change_LOG_DIR(log_dir, web_log):
             results += ["Unable to create directory " + os.path.normpath(log_dir) + ", log dir not changed."]
@@ -1179,7 +1193,7 @@ class ConfigPostProcessing:
 
     @cherrypy.expose
     def savePostProcessing(self, naming_pattern=None, naming_multi_ep=None,
-                    xbmc_data=None, xbmc_v12__data=None, mediabrowser_data=None, synology_data=None, sony_ps3_data=None, wdtv_data=None, tivo_data=None, mede8er_data=None,
+                    xbmc_data=None, xbmc_12plus_data=None, mediabrowser_data=None, synology_data=None, sony_ps3_data=None, wdtv_data=None, tivo_data=None, mede8er_data=None,
                     use_banner=None, keep_processed_dir=None, process_method=None, process_automatically=None, rename_episodes=None, unpack=None,
                     move_associated_files=None, tv_download_dir=None, naming_custom_abd=None, naming_abd_pattern=None, naming_strip_year=None, use_failed_downloads=None,
                     delete_failed=None, treat_empty_as_failed=None, extra_scripts=None):
@@ -1261,7 +1275,7 @@ class ConfigPostProcessing:
 
         sickbeard.KEEP_PROCESSED_DIR = keep_processed_dir
         sickbeard.PROCESS_METHOD = process_method
-        sickbeard.EXTRA_SCRIPTS = extra_scripts.split('|')
+        sickbeard.EXTRA_SCRIPTS = [x.strip() for x in extra_scripts.split('|') if x.strip()]
         sickbeard.RENAME_EPISODES = rename_episodes
         sickbeard.MOVE_ASSOCIATED_FILES = move_associated_files
         sickbeard.NAMING_CUSTOM_ABD = naming_custom_abd
@@ -1271,7 +1285,7 @@ class ConfigPostProcessing:
         sickbeard.TREAT_EMPTY_AS_FAILED = treat_empty_as_failed
 
         sickbeard.metadata_provider_dict['XBMC'].set_config(xbmc_data)
-        sickbeard.metadata_provider_dict['XBMC v12+'].set_config(xbmc_v12__data)
+        sickbeard.metadata_provider_dict['XBMC 12+'].set_config(xbmc_12plus_data)
         sickbeard.metadata_provider_dict['MediaBrowser'].set_config(mediabrowser_data)
         sickbeard.metadata_provider_dict['Synology'].set_config(synology_data)
         sickbeard.metadata_provider_dict['Sony PS3'].set_config(sony_ps3_data)
@@ -1496,6 +1510,7 @@ class ConfigProviders:
                       scc_username=None, scc_password=None,
                       torrentday_username=None, torrentday_password=None, torrentday_freeleech=None,
                       hdbits_username=None, hdbits_passkey=None,
+					  nextgen_username=None, nextgen_password=None,
                       newzbin_username=None, newzbin_password=None,
                       provider_order=None):
 
@@ -1623,6 +1638,8 @@ class ConfigProviders:
                 sickbeard.TORRENTDAY = curEnabled
             elif curProvider == 'hdbits':
                 sickbeard.HDBITS = curEnabled
+            elif curProvider == 'nextgen':
+                sickbeard.NEXTGEN = curEnabled				
             elif curProvider in newznabProviderDict:
                 newznabProviderDict[curProvider].enabled = bool(curEnabled)
             elif curProvider in torrentRssProviderDict:
@@ -1697,6 +1714,9 @@ class ConfigProviders:
         sickbeard.OMGWTFNZBS_USERNAME = omgwtfnzbs_username.strip()
         sickbeard.OMGWTFNZBS_APIKEY = omgwtfnzbs_apikey.strip()
 
+        sickbeard.NEXTGEN_USERNAME = nextgen_username.strip()
+        sickbeard.NEXTGEN_PASSWORD = nextgen_password.strip()
+		
         sickbeard.NEWZNAB_DATA = '!!!'.join([x.configStr() for x in sickbeard.newznabProviderList])
         sickbeard.PROVIDER_ORDER = provider_list
 
@@ -2341,7 +2361,7 @@ class HomePostProcess:
             is_priority = False
 
         if not dir:
-            redirect("/home/postprocess")
+            redirect("/home/postprocess/")
         else:
             result = processTV.processDir(dir, nzbName, process_method=process_method, force=force, is_priority=is_priority, failed=failed)
             if quiet != None and int(quiet) == 1:
@@ -2606,7 +2626,7 @@ class NewHomeAddShows:
             if not dir_exists:
                 logger.log(u"Unable to create the folder "+show_dir+", can't add the show", logger.ERROR)
                 ui.notifications.error("Unable to add show", "Unable to create the folder "+show_dir+", can't add the show")
-                redirect("/home")
+                redirect("/home/")
             else:
                 helpers.chmodAsParent(show_dir)
 
@@ -2739,7 +2759,7 @@ class ErrorLogs:
     @cherrypy.expose
     def clearerrors(self):
         classes.ErrorViewer.clear()
-        redirect("/errorlogs")
+        redirect("/errorlogs/")
 
     @cherrypy.expose
     def viewlog(self, minLevel=logger.MESSAGE, maxLines=500):
@@ -3058,7 +3078,7 @@ class Home:
     def shutdown(self, pid=None):
 
         if str(pid) != str(sickbeard.PID):
-            redirect("/home")
+            redirect("/home/")
 
         threading.Timer(2, sickbeard.invoke_shutdown).start()
 
@@ -3071,7 +3091,7 @@ class Home:
     def restart(self, pid=None):
 
         if str(pid) != str(sickbeard.PID):
-            redirect("/home")
+            redirect("/home/")
 
         t = PageTemplate(file="restart.tmpl")
         t.submenu = HomeMenu()
@@ -3085,7 +3105,7 @@ class Home:
     def update(self, pid=None):
 
         if str(pid) != str(sickbeard.PID):
-            redirect("/home")
+            redirect("/home/")
 
         updated = sickbeard.versionCheckScheduler.action.update() #@UndefinedVariable
 
@@ -3370,7 +3390,7 @@ class Home:
         showObj.deleteShow()
 
         ui.notifications.message('<b>%s</b> has been deleted' % showObj.name)
-        redirect("/home")
+        redirect("/home/")
 
     @cherrypy.expose
     def refreshShow(self, show=None):
@@ -3539,7 +3559,7 @@ class Home:
                     epObj.saveToDB()
                 
         if int(status) == WANTED:           
-            msg = "Backlog was automatically started for the following seasons of <b>"+showObj.name+"</b>:<br />"
+            msg = "Backlog was automatically started for the following seasons of <b>" + showObj.name + "</b>:<br /><ul>"
             for cur_segment in segment_list:
                 msg += "<li>Season "+str(cur_segment)+"</li>"
                 logger.log(u"Sending backlog for "+showObj.name+" season "+str(cur_segment)+" because some eps were set to wanted")
@@ -3807,7 +3827,7 @@ class WebInterface:
     @cherrypy.expose
     def index(self):
 
-        redirect("/home")
+        redirect("/home/")
 
     @cherrypy.expose
     def showPoster(self, show=None, which=None):
@@ -3851,7 +3871,7 @@ class WebInterface:
 
         sickbeard.HOME_LAYOUT = layout
 
-        redirect("/home")
+        redirect("/home/")
 
     @cherrypy.expose
     def setHistoryLayout(self, layout):
@@ -3861,7 +3881,7 @@ class WebInterface:
 
         sickbeard.HISTORY_LAYOUT = layout
 
-        redirect("/history")
+        redirect("/history/")
 
     @cherrypy.expose
     def toggleDisplayShowSpecials(self, show):
@@ -3877,14 +3897,14 @@ class WebInterface:
 
         sickbeard.COMING_EPS_LAYOUT = layout
 
-        redirect("/comingEpisodes")
+        redirect("/comingEpisodes/")
 
     @cherrypy.expose
     def toggleComingEpsDisplayPaused(self):
 
         sickbeard.COMING_EPS_DISPLAY_PAUSED = not sickbeard.COMING_EPS_DISPLAY_PAUSED
 
-        redirect("/comingEpisodes")
+        redirect("/comingEpisodes/")
 
     @cherrypy.expose
     def setComingEpsSort(self, sort):
@@ -3893,14 +3913,10 @@ class WebInterface:
 
         sickbeard.COMING_EPS_SORT = sort
 
-        redirect("/comingEpisodes")
+        redirect("/comingEpisodes/")
 
     @cherrypy.expose
     def comingEpisodes(self, layout="None"):
-
-        # get local timezone and load network timezones
-        sb_timezone = tz.tzlocal()
-        network_dict = network_timezones.load_network_dict()
 
         myDB = db.DBConnection()
 
@@ -3932,37 +3948,9 @@ class WebInterface:
         # make a dict out of the sql results
         sql_results = [dict(row) for row in sql_results]
 
-        # regex to parse time (12/24 hour format)
-        time_regex = re.compile(r"(\d{1,2}):(\d{2,2})( [PA]M)?\b", flags=re.IGNORECASE)
-
         # add localtime to the dict
         for index, item in enumerate(sql_results):
-            mo = time_regex.search(item['airs'])
-            if mo != None and len(mo.groups()) >= 2:
-                try:
-                    hr = helpers.tryInt(mo.group(1))
-                    m = helpers.tryInt(mo.group(2))
-                    ap = mo.group(3)
-                    # convert am/pm to 24 hour clock
-                    if ap != None:
-                        if ap.lower() == u" pm" and hr != 12:
-                            hr += 12
-                        elif ap.lower() == u" am" and hr == 12:
-                            hr -= 12
-                except:
-                    hr = 0
-                    m = 0
-            else:
-                hr = 0
-                m = 0
-            if hr < 0 or hr > 23 or m < 0 or m > 59:
-                hr = 0
-                m = 0
-
-            te = datetime.datetime.fromordinal(helpers.tryInt(item['airdate']))
-            foreign_timezone = network_timezones.get_network_timezone(item['network'], network_dict, sb_timezone)
-            foreign_naive = datetime.datetime(te.year, te.month, te.day, hr, m,tzinfo=foreign_timezone)
-            sql_results[index]['localtime'] = foreign_naive.astimezone(sb_timezone)
+            sql_results[index]['localtime'] = network_timezones.parse_date_time(item['airdate'],item['airs'],item['network'])
 
             #Normalize/Format the Airing Time
             try:
@@ -3992,8 +3980,8 @@ class WebInterface:
             paused_item,
         ]
 
-        t.next_week = datetime.datetime.combine(next_week1, datetime.time(tzinfo=sb_timezone))
-        t.today = datetime.datetime.now().replace(tzinfo=sb_timezone)
+        t.next_week = datetime.datetime.combine(next_week1, datetime.time(tzinfo=network_timezones.sb_timezone))
+        t.today = datetime.datetime.now().replace(tzinfo=network_timezones.sb_timezone)
         t.sql_results = sql_results
 
         # Allow local overriding of layout parameter
