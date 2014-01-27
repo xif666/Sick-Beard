@@ -29,10 +29,9 @@
 	            	hintText: "Write to search a language and select it",
 					preventDuplicates: true,
 	            	prePopulate:
-	            		
 		            		[
 		            			<%=
-		            					",\r\n".join("{id: \"" + lang + "\", name: \"" + subtitles.getLanguageName(lang) + "\"}" for lang in sickbeard.SUBTITLES_LANGUAGES) if sickbeard.SUBTITLES_LANGUAGES != '' else ''
+		            					",\r\n".join("{id: \"" + lang + "\", name: \"" + subtitles.getLanguageName(lang) + "\"}" for lang in sickbeard.SUBTITLES_LANGUAGES) if sickbeard.SUBTITLES_LANGUAGES != () else ''
 		            			%>
 		            		]
 	            }

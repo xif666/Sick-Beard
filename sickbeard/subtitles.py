@@ -29,7 +29,8 @@ from sickbeard import db
 from sickbeard import history
 
 from lib import subliminal
-from lib.babelfish import Language, exceptions
+from lib.babelfish import Language
+from lib.babelfish.exceptions import LanguageReverseError
 from lib.babelfish.language import LANGUAGE_MATRIX
 
 SINGLE = 'und'
@@ -93,8 +94,11 @@ def isValidLanguage(language):
         return False
 
 def getLanguageName(selectLang):
-    return Language.fromalpha2(selectLang).name
-
+    try:
+        return Language.fromalpha2(selectLang).name
+    except:
+        return ''
+    
 def wantedLanguages(sqlLike = False):
     wantedLanguages = sorted(sickbeard.SUBTITLES_LANGUAGES)
     if sqlLike:
