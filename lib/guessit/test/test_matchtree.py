@@ -20,29 +20,38 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-from guessit.plugins.transformers import Transformer, SingleNodeGuesser
-from guessit.date import search_year
+from guessit.test.guessittest import *
+
+from guessit.transfo.guess_release_group import GuessReleaseGroup
+from guessit.transfo.guess_properties import GuessProperties
+
+keywords = yaml.load("""
+
+? Xvid PROPER
+: videoCodec: Xvid
+  other: PROPER
+
+? PROPER-Xvid
+: videoCodec: Xvid
+  other: PROPER
+
+""")
 
 
-class GuessYear(Transformer):
-    def __init__(self):
-        Transformer.__init__(self, -160)
+def guess_info(string):
+    mtree = MatchTree(string)
+    GuessReleaseGroup().process(mtree)
+    GuessProperties().process(mtree)
+    return mtree.matched()
 
-    def supported_properties(self):
-        return ['year']
 
-    def guess_year(self, string, node=None):
-        year, span = search_year(string)
-        if year:
-            return {'year': year}, span
-        else:
-            return None, None
+class TestMatchTree(TestGuessit):
 
-    def second_pass_options(self, mtree, options={}):
-        year_nodes = mtree.leaves_containing('year')
-        if len(year_nodes) > 1:
-            return None, {'skip_nodes': year_nodes[:len(year_nodes) - 1]}
-        return None, None
+    def test_match(self):
+        self.checkFields(keywords, guess_info)
 
-    def process(self, mtree, options={}, *args, **kwargs):
-        SingleNodeGuesser(self.guess_year, 1.0, self.log, *args, **kwargs).process(mtree)
+
+suite = allTests(TestMatchTree)
+
+if __name__ == '__main__':
+    TextTestRunner(verbosity=2).run(suite)

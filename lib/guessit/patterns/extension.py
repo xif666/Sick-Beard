@@ -3,6 +3,8 @@
 #
 # GuessIt - A library for guessing information from filenames
 # Copyright (c) 2013 Nicolas Wack <wackou@gmail.com>
+# Copyright (c) 2013 Rémi Alvergnat <toilal.dev@gmail.com>
+# Copyright (c) 2011 Ricard Marxer <ricardmp@gmail.com>
 #
 # GuessIt is free software; you can redistribute it and/or modify it under
 # the terms of the Lesser GNU General Public License as published by
@@ -20,29 +22,11 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-from guessit.plugins.transformers import Transformer, SingleNodeGuesser
-from guessit.date import search_year
+subtitle_exts = ['srt', 'idx', 'sub', 'ssa']
 
+info_exts = ['nfo']
 
-class GuessYear(Transformer):
-    def __init__(self):
-        Transformer.__init__(self, -160)
-
-    def supported_properties(self):
-        return ['year']
-
-    def guess_year(self, string, node=None):
-        year, span = search_year(string)
-        if year:
-            return {'year': year}, span
-        else:
-            return None, None
-
-    def second_pass_options(self, mtree, options={}):
-        year_nodes = mtree.leaves_containing('year')
-        if len(year_nodes) > 1:
-            return None, {'skip_nodes': year_nodes[:len(year_nodes) - 1]}
-        return None, None
-
-    def process(self, mtree, options={}, *args, **kwargs):
-        SingleNodeGuesser(self.guess_year, 1.0, self.log, *args, **kwargs).process(mtree)
+video_exts = ['3g2', '3gp', '3gp2', 'asf', 'avi', 'divx', 'flv', 'm4v', 'mk2',
+              'mka', 'mkv', 'mov', 'mp4', 'mp4a', 'mpeg', 'mpg', 'ogg', 'ogm',
+              'ogv', 'qt', 'ra', 'ram', 'rm', 'ts', 'wav', 'webm', 'wma', 'wmv',
+              'iso']

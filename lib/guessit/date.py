@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # GuessIt - A library for guessing information from filenames
-# Copyright (c) 2011 Nicolas Wack <wackou@gmail.com>
+# Copyright (c) 2013 Nicolas Wack <wackou@gmail.com>
 #
 # GuessIt is free software; you can redistribute it and/or modify it under
 # the terms of the Lesser GNU General Public License as published by
@@ -18,12 +18,16 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 import datetime
 import re
 
+
 def valid_year(year):
+    """Check if number is a valid year"""
     return 1920 < year < datetime.date.today().year + 5
+
 
 def search_year(string):
     """Looks for year patterns, and if found return the year and group span.
@@ -121,7 +125,7 @@ def search_date(string):
                 continue
 
             # check date plausibility
-            if not 1900 < date.year < datetime.date.today().year + 5:
+            if not valid_year(date.year):
                 continue
 
             # looks like we have a valid date
