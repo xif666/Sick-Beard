@@ -1,0 +1,22 @@
+#import sickbeard
+#from sickbeard import subtitles
+#import subliminal
+#import os.path, os
+#import datetime
+#set global $title="Listing Subtitles"
+#set global $topmenu="manageShows"
+
+<table class="sickbeardTable" cellspacing="1" border="0" cellpadding="0">
+<tr></th><th>Provider</th><th>Subtitle Name</th><th>Language</th><th>Score</th><th>Download</th></tr>
+#for $subtitle in $ep_subtitles:
+	<tr class="odd">
+		<td align="center"><img src="$sbRoot/images/subtitles/${subtitle.provider_name}.png" width="16" height="16" /></td>
+		<td align="left">
+		#if int($subtitle.hearing_impaired):
+			<img style="float: right;" src="$sbRoot/images/subtitles/hearing.png" width="16" height="16" alt=""/>
+		#end if
+		#if hasattr(subtitle, 'hash') then $ep_obj.release_name else	'Pippo'#</td>
+		<td align="center"><img src="$sbRoot/images/flags/${subtitle.language.alpha2}.png" width="16" height="11" alt="${subtitle.language.alpha3}" /></td>
+		<td align="center">$subtitle.compute_score($video)</td> 
+		<td align="center"><a class="btn" href="downloadEpisodeSubtitle?subtitle_index=${subtitle}">Download</td>
+#end for

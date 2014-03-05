@@ -162,4 +162,55 @@ $(document).ready(function(){
          });
     }
 
+		$('.epSubtitlesList').click(function(){
+			var subtitles_td = $(this).parent().siblings('.subtitles_column');
+			var subtitles_search_link = $(this);
+			// fill with the ajax loading gif
+			subtitles_search_link.empty();
+			subtitles_search_link.append($("<img/>").attr({"src": sbRoot+"/images/loading16_dddddd.gif", "alt": "", "title": "loading"}));
+
+			$(this).addTip();
+			$(this).qtip.show();
+			// don't follow the link
+		});
+
+	
+		$.fn.addTip = function() {
+			var sbRoot = $('#sbRoot').val()
+	      $(this).qtip({
+	  
+	          overwrite: true,
+	          position: {
+	             adjust: {
+	                x: 0, y: 0,
+	             },
+	             my: 'right top',
+	               at: 'top left',
+	          },
+	          hide: {
+	               fixed: true,
+	               delay: 900,
+	          },
+		    content: {
+		        text: 'Loading...', // The text to use whilst the AJAX request is loading
+		        ajax: {
+		            url: sbRoot+'/home/' + $(this).attr('link'), // URL to the local file
+		            type: 'GET', // POST or GET
+		            data: {}, // Data to pass along with your request
+		        }
+		    },    
+	          style: {
+	              border: {
+	                  width: 0,
+	                  radius: 0,
+	                  color: '#e1e1e1'
+	              },
+	              width: 550,
+	              background: '#FFF',
+	              padding: 2,
+	              tip: true, // Give it a speech bubble tip with automatic corner detection
+	              classes: 'qtip-dark qtip-shadow',
+	          },
+	      });
+	};		
 });

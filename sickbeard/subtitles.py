@@ -29,6 +29,8 @@ from sickbeard import db
 from sickbeard import history
 
 from lib import subliminal
+from lib.subliminal.providers import provider_manager
+from lib.subliminal.converters import *
 from lib.babelfish import Language
 from lib.babelfish.exceptions import LanguageReverseError
 from lib.babelfish.language import LANGUAGE_MATRIX
@@ -36,8 +38,23 @@ from lib.babelfish.language import LANGUAGE_MATRIX
 SINGLE = 'und'
 
 def sortedServiceList():
+
+
+    REMOTE_DBG = False
     
-    servicesMapping = dict([(x.lower(), x) for x in subliminal.providers.PROVIDERS])
+    if REMOTE_DBG:
+            # Make pydev debugger works for auto reload.
+            # Note pydevd module need to be copied in XBMC\system\python\Lib\pysrc
+        try:
+            import pysrc.pydevd as pydevd
+            # stdoutToServer and stderrToServer redirect stdout and stderr to eclipse console
+            pydevd.settrace('localhost', port=5678, stdoutToServer=True, stderrToServer=True)
+        except ImportError:
+            sys.stderr.write("Error: " +
+                    "You must add org.python.pydev.debug.pysrc to your PYTHONPATH.")
+            sys.exit(1)   
+
+    servicesMapping = provider_manager.available_providers
 
     newList = []
     authDict = authServiceDict()
@@ -47,11 +64,11 @@ def sortedServiceList():
     for curService in sickbeard.SUBTITLES_SERVICES_LIST:
         if curService in servicesMapping:
             curServiceDict = {'id': curService, 
-                              'image': curService+'.png', 
-                              'name': servicesMapping[curService], 
+                              'image': curService + '.png', 
+                              'name': curService, 
                               'enabled': sickbeard.SUBTITLES_SERVICES_ENABLED[curIndex] == 1, 
-                              'url': subliminal.providers.get_provider(curService).server, 
-                              'need_auth': hasattr(subliminal.providers.get_provider(curService)(), 'password'),
+                              'url': provider_manager[curService].url, 
+                              'need_auth': hasattr(provider_manager[curService](), 'password'),
                               'username': '',
                               'password': ''
                               }
@@ -64,14 +81,15 @@ def sortedServiceList():
         curIndex += 1
 
     # add any services that are missing from that list
-    for curService in servicesMapping.keys():
+    for curService in servicesMapping:
         if curService not in [x['id'] for x in newList]:
-            curServiceDict = {'id': curService, 'image': curService+'.png', 'name': servicesMapping[curService], 'enabled': False, 'url': subliminal.providers.get_provider(curService).server, 'need_auth' : hasattr(subliminal.providers.get_provider(curService)(), 'password')}
+            curServiceDict = {'id': curService, 'image': curService+'.png', 'name': curService, 'enabled': False, 'url': provider_manager[curService].url, 'need_auth' : hasattr(provider_manager[curService](), 'password'), 'username': '', 'password': '' }
             newList.append(curServiceDict)
 
     return newList
 
 def authServiceDict():
+    
     authDict = {}
 
     for auth in sickbeard.SUBTITLES_SERVICES_AUTH.split('!!!'):

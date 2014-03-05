@@ -135,7 +135,6 @@ METADATA_PS3 = None
 METADATA_WDTV = None
 METADATA_TIVO = None
 METADATA_SYNOLOGY = None
-METADATA_MEDE8ER = None
 
 QUALITY_DEFAULT = None
 STATUS_DEFAULT = None
@@ -420,6 +419,7 @@ SUBTITLES_SERVICES_ENABLED = []
 SUBTITLES_SERVICES_AUTH = ''
 SUBTITLES_HISTORY = False
 SUBTITLES_FINDER_FREQUENCY = 1
+SUBTITLES_SINGLE = False
 
 USE_FAILED_DOWNLOADS = False
 DELETE_FAILED = False
@@ -477,11 +477,11 @@ def initialize(consoleLogging=True):
                 USE_LIBNOTIFY, LIBNOTIFY_NOTIFY_ONSNATCH, LIBNOTIFY_NOTIFY_ONDOWNLOAD, LIBNOTIFY_NOTIFY_ONSUBTITLEDOWNLOAD, USE_NMJ, NMJ_HOST, NMJ_DATABASE, NMJ_MOUNT, USE_NMJv2, NMJv2_HOST, NMJv2_DATABASE, NMJv2_DBLOC, USE_SYNOINDEX, \
                 USE_SYNOLOGYNOTIFIER, SYNOLOGYNOTIFIER_NOTIFY_ONSNATCH, SYNOLOGYNOTIFIER_NOTIFY_ONDOWNLOAD, SYNOLOGYNOTIFIER_NOTIFY_ONSUBTITLEDOWNLOAD, \
                 USE_EMAIL, EMAIL_HOST, EMAIL_PORT, EMAIL_TLS, EMAIL_USER, EMAIL_PASSWORD, EMAIL_FROM, EMAIL_NOTIFY_ONSNATCH, EMAIL_NOTIFY_ONDOWNLOAD, EMAIL_NOTIFY_ONSUBTITLEDOWNLOAD, EMAIL_LIST, \
-                USE_BANNER, USE_LISTVIEW, METADATA_XBMC, METADATA_XBMC_12PLUS, METADATA_MEDIABROWSER, METADATA_PS3, METADATA_SYNOLOGY, METADATA_MEDE8ER, metadata_provider_dict, \
+                USE_BANNER, USE_LISTVIEW, METADATA_XBMC, METADATA_XBMC_12PLUS, METADATA_MEDIABROWSER, METADATA_PS3, METADATA_SYNOLOGY, metadata_provider_dict, \
                 NEWZBIN, NEWZBIN_USERNAME, NEWZBIN_PASSWORD, GIT_PATH, MOVE_ASSOCIATED_FILES, \
                 GUI_NAME, HOME_LAYOUT, HISTORY_LAYOUT, DISPLAY_SHOW_SPECIALS, COMING_EPS_LAYOUT, COMING_EPS_SORT, COMING_EPS_DISPLAY_PAUSED, COMING_EPS_MISSED_RANGE, DATE_PRESET, TIME_PRESET, TIME_PRESET_W_SECONDS, \
                 METADATA_WDTV, METADATA_TIVO, IGNORE_WORDS,  CALENDAR_UNPROTECTED, CREATE_MISSING_SHOW_DIRS, \
-                ADD_SHOWS_WO_DIR, USE_SUBTITLES, SUBTITLES_LANGUAGES, SUBTITLES_DIR, SUBTITLES_SERVICES_LIST, SUBTITLES_SERVICES_ENABLED, SUBTITLES_SERVICES_AUTH, SUBTITLES_HISTORY, SUBTITLES_FINDER_FREQUENCY, subtitlesFinderScheduler, \
+                ADD_SHOWS_WO_DIR, USE_SUBTITLES, SUBTITLES_LANGUAGES, SUBTITLES_DIR, SUBTITLES_SERVICES_LIST, SUBTITLES_SERVICES_ENABLED, SUBTITLES_SERVICES_AUTH, SUBTITLES_HISTORY, SUBTITLES_FINDER_FREQUENCY, SUBTITLES_SINGLE, subtitlesFinderScheduler, \
                 USE_FAILED_DOWNLOADS, DELETE_FAILED, ANON_REDIRECT, LOCALHOST_IP
 
         if __INITIALIZED__:
@@ -860,8 +860,7 @@ def initialize(consoleLogging=True):
 
         USE_SUBTITLES = bool(check_setting_int(CFG, 'Subtitles', 'use_subtitles', 0))
         SUBTITLES_LANGUAGES = check_setting_str(CFG, 'Subtitles', 'subtitles_languages', '').split(',')
-        if SUBTITLES_LANGUAGES[0] == '':
-            SUBTITLES_LANGUAGES = []
+        if SUBTITLES_LANGUAGES[0] == '': SUBTITLES_LANGUAGES = []
         SUBTITLES_DIR = check_setting_str(CFG, 'Subtitles', 'subtitles_dir', '')
         SUBTITLES_SERVICES_LIST = check_setting_str(CFG, 'Subtitles', 'subtitles_services_list', '').split(',')
         SUBTITLES_SERVICES_ENABLED = [int(x) for x in check_setting_str(CFG, 'Subtitles', 'subtitles_services_enabled', '').split('|') if x]
@@ -869,6 +868,7 @@ def initialize(consoleLogging=True):
         SUBTITLES_DEFAULT = bool(check_setting_int(CFG, 'Subtitles', 'subtitles_default', 0))
         SUBTITLES_HISTORY = bool(check_setting_int(CFG, 'Subtitles', 'subtitles_history', 0))
         SUBTITLES_FINDER_FREQUENCY = check_setting_int(CFG, 'Subtitles', 'subtitles_finder_frequency', 1)
+        SUBTITLES_SINGLE = bool(check_setting_int(CFG, 'Subtitles', 'subtitles_single', 0))
 
         USE_FAILED_DOWNLOADS = bool(check_setting_int(CFG, 'FailedDownloads', 'use_failed_downloads', 0))
         DELETE_FAILED = bool(check_setting_int(CFG, 'FailedDownloads', 'delete_failed', 0))
@@ -900,8 +900,6 @@ def initialize(consoleLogging=True):
                 old_metadata_class = metadata.mediabrowser.metadata_class
             elif METADATA_TYPE == 'ps3':
                 old_metadata_class = metadata.ps3.metadata_class
-            elif METADATA_TYPE == 'mede8er':
-                old_metadata_class = metadata.mede8er.metadata_class
 
             if old_metadata_class:
 
@@ -931,7 +929,6 @@ def initialize(consoleLogging=True):
             METADATA_WDTV = check_setting_str(CFG, 'General', 'metadata_wdtv', '0|0|0|0|0|0')
             METADATA_TIVO = check_setting_str(CFG, 'General', 'metadata_tivo', '0|0|0|0|0|0')
             METADATA_SYNOLOGY = check_setting_str(CFG, 'General', 'metadata_synology', '0|0|0|0|0|0')
-            METADATA_MEDE8ER = check_setting_str(CFG, 'General', 'metadata_mede8er', '0|0|0|0|0|0')
 
             for cur_metadata_tuple in [(METADATA_XBMC, metadata.xbmc),
                                        (METADATA_XBMC_12PLUS, metadata.xbmc_12plus),
@@ -940,7 +937,6 @@ def initialize(consoleLogging=True):
                                        (METADATA_WDTV, metadata.wdtv),
                                        (METADATA_TIVO, metadata.tivo),
                                        (METADATA_SYNOLOGY, metadata.synology),
-                                       (METADATA_MEDE8ER, metadata.mede8er),
                                        ]:
 
                 (cur_metadata_config, cur_metadata_class) = cur_metadata_tuple
@@ -1342,7 +1338,6 @@ def save_config():
     new_config['General']['metadata_wdtv'] = metadata_provider_dict['WDTV'].get_config()
     new_config['General']['metadata_tivo'] = metadata_provider_dict['TIVO'].get_config()
     new_config['General']['metadata_synology'] = metadata_provider_dict['Synology'].get_config()
-    new_config['General']['metadata_mede8er'] = metadata_provider_dict['Mede8er'].get_config()
 
     new_config['General']['cache_dir'] = ACTUAL_CACHE_DIR if ACTUAL_CACHE_DIR else 'cache'
     new_config['General']['root_dirs'] = ROOT_DIRS if ROOT_DIRS else ''
@@ -1650,6 +1645,7 @@ def save_config():
     new_config['Subtitles']['subtitles_default'] = int(SUBTITLES_DEFAULT)
     new_config['Subtitles']['subtitles_history'] = int(SUBTITLES_HISTORY)
     new_config['Subtitles']['subtitles_finder_frequency'] = int(SUBTITLES_FINDER_FREQUENCY)
+    new_config['Subtitles']['subtitles_single'] = int(SUBTITLES_SINGLE)
 
     new_config['FailedDownloads']= {}
     new_config['FailedDownloads']['use_failed_downloads'] = int(USE_FAILED_DOWNLOADS)

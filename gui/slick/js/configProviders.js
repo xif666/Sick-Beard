@@ -256,9 +256,9 @@ $(document).ready(function(){
                delay: 900,
           },
           content: {
-          text: config_form,
+          text: '<iframe src="' + $(this).attr('href') + '" width=300 height=500',
                 title: {
-                    text: provider_name + ' Config',
+                    text: ' Config',
                     button: true
                 }
           },

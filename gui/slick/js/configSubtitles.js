@@ -44,6 +44,19 @@ $(document).ready(function(){
             $("#service_order").val(finalArr.join(' '));
     }
 
+	$.fn.checkSingleLanguage = function() {
+		var num_languages = $('.token-input-list > .token-input-token').length
+		
+		if ($(this).prop('checked') && num_languages > 1) {
+        	$(this).qtip('option', {
+            	'content.text': 'Unrar Executable not found.',
+                'style.classes': 'qtip-rounded qtip-shadow qtip-red'
+			});
+			$(this).qtip('show');
+            $(this).css('background-color', '#FFFFDD');	
+		}
+    }
+
 	//var subServices = new Array();
 	
     $.fn.makeAuthServiceString = function() {
@@ -58,7 +71,6 @@ $(document).ready(function(){
 		});
 		
 		$('#subtitles_services_auth').val(subStrings);
-		var a =  1;
     }
     
     $('#editAService').change(function(){
@@ -70,10 +82,27 @@ $(document).ready(function(){
     }); 
     
     $('.sub_passw, .sub_uname').change(function(){
-    	var a;
     	$(this).makeAuthServiceString();
     });
 
+    $('#subtitles_single').change(function(){
+        $(this).checkSingleLanguage();
+    });
+
+    $('#subtitles_single').qtip( {
+        position: {
+            viewport: $(window),
+            at: 'top center',
+            my: 'bottom center',
+        },
+        style: {
+            tip: {
+                corner: true,
+                method: 'polygon'
+            },
+            classes: 'qtip-rounded qtip-shadow qtip-red'
+        }
+    });
 
     // initialization stuff
 

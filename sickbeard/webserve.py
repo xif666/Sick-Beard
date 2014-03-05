@@ -1193,7 +1193,7 @@ class ConfigPostProcessing:
 
     @cherrypy.expose
     def savePostProcessing(self, naming_pattern=None, naming_multi_ep=None,
-                    xbmc_data=None, xbmc_12plus_data=None, mediabrowser_data=None, synology_data=None, sony_ps3_data=None, wdtv_data=None, tivo_data=None, mede8er_data=None,
+                    xbmc_data=None, xbmc_12plus_data=None, mediabrowser_data=None, synology_data=None, sony_ps3_data=None, wdtv_data=None, tivo_data=None,
                     use_banner=None, keep_processed_dir=None, process_method=None, process_automatically=None, rename_episodes=None, unpack=None,
                     move_associated_files=None, tv_download_dir=None, naming_custom_abd=None, naming_abd_pattern=None, naming_strip_year=None, use_failed_downloads=None,
                     delete_failed=None, treat_empty_as_failed=None, extra_scripts=None):
@@ -1291,7 +1291,6 @@ class ConfigPostProcessing:
         sickbeard.metadata_provider_dict['Sony PS3'].set_config(sony_ps3_data)
         sickbeard.metadata_provider_dict['WDTV'].set_config(wdtv_data)
         sickbeard.metadata_provider_dict['TIVO'].set_config(tivo_data)
-        sickbeard.metadata_provider_dict['Mede8er'].set_config(mede8er_data)
 
         if self.isNamingValid(naming_pattern, naming_multi_ep) != "invalid":
             sickbeard.NAMING_PATTERN = naming_pattern
@@ -2246,7 +2245,7 @@ class ConfigSubtitles:
         return _munge(t)
 
     @cherrypy.expose
-    def saveSubtitles(self, use_subtitles=None, subtitles_plugins=None, subtitles_languages=None, subtitles_dir=None, service_order=None, subtitles_services_auth = None, subtitles_history=None, subtitles_finder_frequency=None):
+    def saveSubtitles(self, use_subtitles=None, subtitles_plugins=None, subtitles_languages=None, subtitles_dir=None, service_order=None, subtitles_services_auth = None, subtitles_history=None, subtitles_finder_frequency=None, subtitles_single=None):
         results = []
 
         if subtitles_finder_frequency == '' or subtitles_finder_frequency is None:
@@ -2267,6 +2266,11 @@ class ConfigSubtitles:
             except:
                 pass
 
+        if subtitles_single == "on":
+            subtitles_single = 1
+        else:
+            subtitles_single = 0
+
         if subtitles_history == "on":
             subtitles_history = 1
         else:
@@ -2275,6 +2279,7 @@ class ConfigSubtitles:
         sickbeard.USE_SUBTITLES = use_subtitles
         sickbeard.SUBTITLES_LANGUAGES = [lang for lang in subtitles_languages.replace(' ', '').split(',')]
         sickbeard.SUBTITLES_DIR = subtitles_dir
+        sickbeard.SUBTITLES_SINGLE = subtitles_single
         sickbeard.SUBTITLES_HISTORY = subtitles_history
         sickbeard.SUBTITLES_FINDER_FREQUENCY = int(subtitles_finder_frequency) if not re.search("\D", subtitles_finder_frequency) else 1 
 
@@ -3761,6 +3766,7 @@ class Home:
 
         return json.dumps({'result': 'failure'})
 
+
     @cherrypy.expose
     def searchEpisodeSubtitles(self, show=None, season=None, episode=None):
 
@@ -3783,6 +3789,110 @@ class Home:
             status = 'No subtitles downloaded'
         ui.notifications.message('Subtitles Search', status)
         return json.dumps({'result': status, 'subtitles': ','.join([x for x in ep_obj.subtitles])})
+
+
+    @cherrypy.expose
+    def getEpisodeSubtitles(self, show=None, season=None, episode=None):
+
+        REMOTE_DBG = True
+        
+        if REMOTE_DBG:
+                # Make pydev debugger works for auto reload.
+                # Note pydevd module need to be copied in XBMC\system\python\Lib\pysrc
+            try:
+                import pysrc.pydevd as pydevd
+                # stdoutToServer and stderrToServer redirect stdout and stderr to eclipse console
+                pydevd.settrace('localhost', port=5678, stdoutToServer=True, stderrToServer=True)
+            except ImportError:
+                sys.stderr.write("Error: " +
+                        "You must add org.python.pydev.debug.pysrc to your PYTHONPATH.")
+                sys.exit(1)         
+        
+#        t = PageTemplate(file="listSubtitles.tmpl")
+#        t.submenu = [{'title': 'Edit', 'path': 'home/editShow?show=%d' % showObj.tvdbid}]
+
+        #retrieve the episode object and fail if we can't get one
+        ep_obj = _getEpisode(show, season, episode)
+        if isinstance(ep_obj, str):
+            pass
+#            return json.dumps({'result': 'failure'})
+            
+        video = subliminal.scan_video(ep_obj.location,
+                                      ep_obj.release_name + '.mkv',
+                                      subtitles=True,
+                                      embedded_subtitles=False)
+
+        languages = set(Language.fromalpha2(x) for x in sickbeard.SUBTITLES_LANGUAGES)
+
+        try:
+            ep_subtitles = subliminal.api.list_subtitles([video], languages, providers=subtitles.getEnabledServiceList(), provider_configs=subtitles.authServiceDict())
+        except Exception, e:
+            pass
+#            return json.dumps({'result': 'failure'})
+
+#        t.ep_obj = ep_obj
+#        t.ep_subtitles = ep_subtitles[video]
+#        t.video = video
+         
+#        return _munge(t)
+        return json.dumps({'result': 'success'})
+
+    @cherrypy.expose
+    def listEpisodeSubtitles(self, show=None, season=None, episode=None):
+
+        t = PageTemplate(file="listSubtitles.tmpl")
+
+        #retrieve the episode object and fail if we can't get one
+        ep_obj = _getEpisode(show, season, episode)
+        if isinstance(ep_obj, str):
+            pass
+#            return json.dumps({'result': 'failure'})
+            
+        video = subliminal.scan_video(ep_obj.location,
+                                      ep_obj.release_name + '.mkv',
+                                      subtitles=True,
+                                      embedded_subtitles=False)
+
+        languages = set(Language.fromalpha2(x) for x in sickbeard.SUBTITLES_LANGUAGES)
+
+        try:
+            ep_subtitles = subliminal.api.list_subtitles([video], languages, providers=subtitles.getEnabledServiceList(), provider_configs=subtitles.authServiceDict())
+        except Exception, e:
+            pass
+#            return json.dumps({'result': 'failure'})
+
+        t.ep_obj = ep_obj
+        t.ep_subtitles = ep_subtitles[video]
+        t.video = video
+         
+        return _munge(t)
+
+
+    @cherrypy.expose
+    def downloadEpisodeSubtitle(self, show=None, season=None, episode=None, subtitle_index=None):
+
+        #retrieve the episode object and fail if we can't get one
+        ep_obj = _getEpisode(show, season, episode)
+        if isinstance(ep_obj, str):
+            return json.dumps({'result': 'failure'})
+
+        video = subliminal.scan_video(ep_obj.location,
+                                      ep_obj.release_name + '.mkv',
+                                      subtitles=True,
+                                      embedded_subtitles=False)
+
+        languages = set(Language.fromalpha2(x) for x in sickbeard.SUBTITLES_LANGUAGES)
+
+        try:
+            ep_subtitles = subliminal.api.list_subtitles([video], languages, providers=subtitles.getEnabledServiceList(), provider_configs=subtitles.authServiceDict())
+        except Exception, e:
+            return json.dumps({'result': 'failure'})
+
+        with subliminal.providers.ProviderPool(providers=subtitles.getEnabledServiceList(), provider_configs=subtitles.authServiceDict()) as pp:
+            downloaded_subtitle = pp.download_subtitle(subtitle)
+            subliminal.api.save_subtitles([downloaded_subtitle], single=sickbeard.SUBTITLES_SINGLE, directory=ep_obj.location)
+            
+        return json.dumps({'result': 'failure'})
 
     @cherrypy.expose
     def retryEpisode(self, show, season, episode):
@@ -3821,26 +3931,6 @@ class Home:
 
         return json.dumps({'result': 'failure'})
             
-#        try:
-#            
-#                
-#            ui.notifications.message('Info', pp.log)
-#        except exceptions.FailedHistoryNotFoundException:
-#            ui.notifications.error('Not Found Error', 'Couldn\'t find release in history. (Has it been over 30 days?)\n'
-#                                   'Can\'t mark it as bad.')
-#            return json.dumps({'result': 'failure'})
-#        except exceptions.FailedHistoryMultiSnatchException:
-#            ui.notifications.error('Multi-Snatch Error', 'The same episode was snatched again before the first one was done.\n'
-#                                   'Please cancel any downloads of this episode and then set it back to wanted.\n Can\'t continue.')
-#            return json.dumps({'result': 'failure'})
-#        except exceptions.FailedProcessingFailed:
-#            ui.notifications.error('Processing Failed', pp.log)
-#            return json.dumps({'result': 'failure'})
-#        except Exception as e:
-#            ui.notifications.error('Unknown Error', 'Unknown exception: ' + str(e))
-#            return json.dumps({'result': 'failure'})
-#
-#        return json.dumps({'result': 'success'})
 
 class UI:
 

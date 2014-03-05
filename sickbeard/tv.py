@@ -1205,34 +1205,27 @@ class TVEpisode(object):
         if not ek.ek(os.path.isfile, self.location):
             logger.log(str(self.show.tvdbid) + ": Episode file doesn't exist, can't download subtitles for episode " + str(self.season) + "x" + str(self.episode), logger.DEBUG)
             return
+        
         logger.log(str(self.show.tvdbid) + ": Downloading subtitles for episode " + str(self.season) + "x" + str(self.episode), logger.DEBUG)
         
         previous_subtitles = self.subtitles
 
         try:
 
-            need_languages = set(Language.fromalpha2(x) for x in sickbeard.SUBTITLES_LANGUAGES) - set(self.subtitles)
-            video = subliminal.scan_videos([self.location], subtitles=True, embedded_subtitles=True)
-            subtitles = subliminal.api.download_best_subtitles(video, languages=need_languages, providers=sickbeard.subtitles.getEnabledServiceList(), provider_configs=sickbeard.subtitles.authServiceDict())
-            subliminal.api.save_subtitles(subtitles)
-#            if sickbeard.SUBTITLES_DIR:
-#                for video in subtitles:
-#                    subs_new_path = ek.ek(os.path.join, os.path.dirname(video.path), sickbeard.SUBTITLES_DIR)
-#                    dir_exists = helpers.makeDir(subs_new_path)
-#                    if not dir_exists:
-#                        logger.log(u"Unable to create subtitles folder "+subs_new_path, logger.ERROR)
-#                    else:
-#                        helpers.chmodAsParent(subs_new_path)
-#                        
-#                    for subtitle in subtitles.get(video):
-#                        new_file_path = ek.ek(os.path.join, subs_new_path, os.path.basename(subtitle.path))
-#                        helpers.moveFile(subtitle.path, new_file_path)
-#                        helpers.chmodAsParent(new_file_path)
-#            else:
-#                for video in subtitles:
-#                    for subtitle in subtitles.get(video):
-#                        helpers.chmodAsParent(subtitle.path)
+            release_name = self.release_name + '.mkv' if self.release_name else None
+            video = subliminal.scan_video(self.location, 
+                                          release_name, 
+                                          subtitles=True, 
+                                          embedded_subtitles=True)
+            #ToDo Add other info into video object like tvdb_id
+            if sickbeard.SUBTITLES_SINGLE:
+                need_languages = set([Language.fromalpha2(sickbeard.SUBTITLES_LANGUAGES[0])])
+            else:    
+                need_languages = set(Language.fromalpha2(x) for x in sickbeard.SUBTITLES_LANGUAGES) - set(self.subtitles)
             
+            ep_subtitles = subliminal.api.download_best_subtitles([video], languages=need_languages, providers=subtitles.getEnabledServiceList(), provider_configs=subtitles.authServiceDict())
+            subliminal.api.save_subtitles(ep_subtitles, single=sickbeard.SUBTITLES_SINGLE)
+
         except Exception as e:
             logger.log("Error occurred when downloading subtitles: " + traceback.format_exc(), logger.ERROR)
             return
