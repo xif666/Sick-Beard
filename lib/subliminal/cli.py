@@ -7,8 +7,8 @@ import os
 import re
 import sys
 import babelfish
-import guessit
-from subliminal import (__version__, cache_region, MutexLock, PROVIDERS, Video, Episode, Movie, scan_videos,
+import xdg.BaseDirectory
+from subliminal import (__version__, cache_region, MutexLock, provider_manager, Video, Episode, Movie, scan_videos,
     download_best_subtitles, save_subtitles)
 try:
     import colorlog
@@ -16,7 +16,7 @@ except ImportError:
     colorlog = None
 
 
-DEFAULT_CACHE_FILE = os.path.join('~', '.config', 'subliminal.cache.dbm')
+DEFAULT_CACHE_FILE = os.path.join(xdg.BaseDirectory.save_cache_path('subliminal'), 'cli.dbm')
 
 
 def subliminal():
@@ -40,8 +40,8 @@ def subliminal():
     # filtering
     filtering_group = parser.add_argument_group('filtering')
     filtering_group.add_argument('-p', '--providers', nargs='+', metavar='PROVIDER',
-                                 help='providers to use (%s)' % ', '.join(PROVIDERS))
-    filtering_group.add_argument('-m', '--min-score', type=int,
+                                 help='providers to use (%s)' % ', '.join(provider_manager.available_providers))
+    filtering_group.add_argument('-m', '--min-score', type=int, default=0,
                                  help='minimum score for subtitles (0-%d for episodes, 0-%d for movies)'
                                  % (Episode.scores['hash'], Movie.scores['hash']))
     filtering_group.add_argument('-a', '--age', help='download subtitles for videos newer than AGE e.g. 12h, 1w2d')
@@ -57,6 +57,10 @@ def subliminal():
 
     # output
     output_group = parser.add_argument_group('output')
+    output_group.add_argument('-d', '--directory',
+                              help='save subtitles in the given directory rather than next to the video')
+    output_group.add_argument('-e', '--encoding', default=None,
+                              help='encoding to convert the subtitle to (default: no conversion)')
     output_exclusive_group = output_group.add_mutually_exclusive_group()
     output_exclusive_group.add_argument('-q', '--quiet', action='store_true', help='disable output')
     output_exclusive_group.add_argument('-v', '--verbose', action='store_true', help='verbose output')
@@ -74,7 +78,8 @@ def subliminal():
 
     # parse paths
     try:
-        args.paths = [os.path.abspath(os.path.expanduser(p.decode('utf-8'))) for p in args.paths]
+        args.paths = [os.path.abspath(os.path.expanduser(p.decode('utf-8') if isinstance(p, bytes) else p))
+                      for p in args.paths]
     except UnicodeDecodeError:
         parser.error('argument paths: encodings is not utf-8: %r' % args.paths)
 
@@ -116,24 +121,47 @@ def subliminal():
         handler = logging.FileHandler(args.log_file, encoding='utf-8')
     if args.debug:
         if args.color:
-            handler.setFormatter(colorlog.ColoredFormatter('%(log_color)s%(levelname)-8s%(reset)s [%(blue)s%(name)s-%(funcName)s:%(lineno)d%(reset)s] %(message)s',
+            if args.log_file is None:
+                log_format = '%(log_color)s%(levelname)-8s%(reset)s [%(blue)s%(name)s-%(funcName)s:%(lineno)d%(reset)s] %(message)s'
+            else:
+                log_format = '%(purple)s%(asctime)s%(reset)s %(log_color)s%(levelname)-8s%(reset)s [%(blue)s%(name)s-%(funcName)s:%(lineno)d%(reset)s] %(message)s'
+            handler.setFormatter(colorlog.ColoredFormatter(log_format,
                                                            log_colors=dict(colorlog.default_log_colors.items() + [('DEBUG', 'cyan')])))
         else:
-            handler.setFormatter(logging.Formatter('%(levelname)-8s [%(name)s-%(funcName)s:%(lineno)d] %(message)s'))
+            if args.log_file is None:
+                log_format = '%(levelname)-8s [%(name)s-%(funcName)s:%(lineno)d] %(message)s'
+            else:
+                log_format = '%(asctime)s %(levelname)-8s [%(name)s-%(funcName)s:%(lineno)d] %(message)s'
+            handler.setFormatter(logging.Formatter(log_format))
         logging.getLogger().addHandler(handler)
         logging.getLogger().setLevel(logging.DEBUG)
     elif args.verbose:
         if args.color:
-            handler.setFormatter(colorlog.ColoredFormatter('%(log_color)s%(levelname)-8s%(reset)s [%(blue)s%(name)s%(reset)s] %(message)s'))
+            if args.log_file is None:
+                log_format = '%(log_color)s%(levelname)-8s%(reset)s [%(blue)s%(name)s%(reset)s] %(message)s'
+            else:
+                log_format = '%(purple)s%(asctime)s%(reset)s %(log_color)s%(levelname)-8s%(reset)s [%(blue)s%(name)s%(reset)s] %(message)s'
+            handler.setFormatter(colorlog.ColoredFormatter(log_format))
         else:
-            handler.setFormatter(logging.Formatter('%(levelname)-8s [%(name)s] %(message)s'))
+            log_format = '%(levelname)-8s [%(name)s] %(message)s'
+            if args.log_file is not None:
+                log_format = '%(asctime)s ' + log_format
+            handler.setFormatter(logging.Formatter(log_format))
         logging.getLogger('subliminal').addHandler(handler)
         logging.getLogger('subliminal').setLevel(logging.INFO)
     elif not args.quiet:
         if args.color:
-            handler.setFormatter(colorlog.ColoredFormatter('[%(log_color)s%(levelname)s%(reset)s] %(message)s'))
+            if args.log_file is None:
+                log_format = '[%(log_color)s%(levelname)s%(reset)s] %(message)s'
+            else:
+                log_format = '%(purple)s%(asctime)s%(reset)s [%(log_color)s%(levelname)s%(reset)s] %(message)s'
+            handler.setFormatter(colorlog.ColoredFormatter(log_format))
         else:
-            handler.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
+            if args.log_file is None:
+                log_format = '%(levelname)s: %(message)s'
+            else:
+                log_format = '%(asctime)s %(levelname)s: %(message)s'
+            handler.setFormatter(logging.Formatter(log_format))
         logging.getLogger('subliminal.api').addHandler(handler)
         logging.getLogger('subliminal.api').setLevel(logging.INFO)
 
@@ -146,21 +174,20 @@ def subliminal():
                          embedded_subtitles=not args.force, age=args.age)
 
     # guess videos
-    videos.extend([Video.fromguess(os.path.split(p)[1], guessit.guess_file_info(p, 'autodetect')) for p in args.paths
-                   if not os.path.exists(p)])
+    videos.extend([Video.fromname(p) for p in args.paths if not os.path.exists(p)])
 
     # download best subtitles
     subtitles = download_best_subtitles(videos, args.languages, providers=args.providers,
                                         provider_configs=provider_configs, min_score=args.min_score,
-                                        hearing_impaired=args.hearing_impaired)
+                                        hearing_impaired=args.hearing_impaired, single=args.single)
 
     # save subtitles
-    save_subtitles(subtitles)
+    save_subtitles(subtitles, single=args.single, directory=args.directory, encoding=args.encoding)
 
     # result output
     if not subtitles:
         if not args.quiet:
-            sys.stderr.write('No subtitles downloaded\n')
+            print('No subtitles downloaded', file=sys.stderr)
         exit(1)
     if not args.quiet:
         subtitles_count = sum([len(s) for s in subtitles.values()])

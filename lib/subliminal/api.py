@@ -5,7 +5,8 @@ import io
 import logging
 import operator
 import os.path
-from .providers import ProviderManager
+import babelfish
+from .providers import ProviderPool
 from .subtitle import get_subtitle_path
 
 
@@ -28,10 +29,10 @@ def list_subtitles(videos, languages, providers=None, provider_configs=None):
 
     """
     subtitles = collections.defaultdict(list)
-    with ProviderManager(providers, provider_configs) as pm:
+    with ProviderPool(providers, provider_configs) as pp:
         for video in videos:
             logger.info('Listing subtitles for %r', video)
-            video_subtitles = pm.list_subtitles(video, languages)
+            video_subtitles = pp.list_subtitles(video, languages)
             logger.info('Found %d subtitles total', len(video_subtitles))
             subtitles[video].extend(video_subtitles)
     return subtitles
@@ -46,14 +47,14 @@ def download_subtitles(subtitles, provider_configs=None):
     :type provider_configs: dict of provider name => provider constructor kwargs or None
 
     """
-    with ProviderManager(provider_configs=provider_configs) as pm:
+    with ProviderPool(provider_configs=provider_configs) as pp:
         for subtitle in subtitles:
             logger.info('Downloading subtitle %r', subtitle)
-            pm.download_subtitle(subtitle)
+            pp.download_subtitle(subtitle)
 
 
 def download_best_subtitles(videos, languages, providers=None, provider_configs=None, min_score=0,
-                            hearing_impaired=False):
+                            hearing_impaired=False, single=False):
     """Download the best subtitles for `videos` with the given `languages` using the specified `providers`
 
     :param videos: videos to download subtitles for
@@ -66,14 +67,20 @@ def download_best_subtitles(videos, languages, providers=None, provider_configs=
     :type provider_configs: dict of provider name => provider constructor kwargs or None
     :param int min_score: minimum score for subtitles to download
     :param bool hearing_impaired: download hearing impaired subtitles
+    :param bool single: do not download for videos with an undetermined subtitle language detected
 
     """
     downloaded_subtitles = collections.defaultdict(list)
-    with ProviderManager(providers, provider_configs) as pm:
+    with ProviderPool(providers, provider_configs) as pp:
         for video in videos:
+            # filter
+            if single and babelfish.Language('und') in video.subtitle_languages:
+                logger.debug('Skipping video %r: undetermined language found')
+                continue
+
             # list
             logger.info('Listing subtitles for %r', video)
-            video_subtitles = pm.list_subtitles(video, languages)
+            video_subtitles = pp.list_subtitles(video, languages)
             logger.info('Found %d subtitles total', len(video_subtitles))
 
             # download
@@ -90,21 +97,23 @@ def download_best_subtitles(videos, languages, providers=None, provider_configs=
                     logger.debug('Skipping subtitle: %r already downloaded', subtitle.language)
                     continue
                 logger.info('Downloading subtitle %r with score %d', subtitle, score)
-                if pm.download_subtitle(subtitle):
+                if pp.download_subtitle(subtitle):
                     downloaded_languages.add(subtitle.language)
                     downloaded_subtitles[video].append(subtitle)
-                if downloaded_languages == languages:
+                if single or downloaded_languages == languages:
                     logger.debug('All languages downloaded')
                     break
     return downloaded_subtitles
 
 
-def save_subtitles(subtitles, single=False, folder_path=None):
+def save_subtitles(subtitles, single=False, directory=None, encoding=None):
     """Save subtitles on disk next to the video or in a specific folder if `folder_path` is specified
 
     :param bool single: download with .srt extension if ``True``, add language identifier otherwise
-    :param folder_path: path to folder where to save the subtitles, if any
-    :type folder_path: string or None
+    :param directory: path to directory where to save the subtitles, if any
+    :type directory: string or None
+    :param encoding: encoding for the subtitles or ``None`` to use the original encoding
+    :type encoding: string or None
 
     """
     for video, video_subtitles in subtitles.items():
@@ -117,11 +126,15 @@ def save_subtitles(subtitles, single=False, folder_path=None):
                 logger.debug('Skipping subtitle %r: language already saved', video_subtitle)
                 continue
             subtitle_path = get_subtitle_path(video.name, None if single else video_subtitle.language)
-            if folder_path is not None:
-                subtitle_path = os.path.join(folder_path, os.path.split(subtitle_path)[1])
+            if directory is not None:
+                subtitle_path = os.path.join(directory, os.path.split(subtitle_path)[1])
             logger.info('Saving %r to %r', video_subtitle, subtitle_path)
-            with io.open(subtitle_path, 'w', encoding='utf-8') as f:
-                f.write(video_subtitle.content)
+            if encoding is None:
+                with io.open(subtitle_path, 'wb') as f:
+                    f.write(video_subtitle.content)
+            else:
+                with io.open(subtitle_path, 'w', encoding=encoding) as f:
+                    f.write(video_subtitle.text)
             saved_languages.add(video_subtitle.language)
             if single:
                 break

@@ -114,7 +114,7 @@ def _guess_filename(filename, filetype, options={}):
     return mtree.matched()
 
 
-def guess_file_info(filename, filetype, info='filename', options={}):
+def guess_file_info(filename, filetype, info=None, options={}):
     """info can contain the names of the various plugins, such as 'filename' to
     detect filename info, or 'hash_md5' to get the md5 hash of the file.
 
@@ -129,8 +129,11 @@ def guess_file_info(filename, filetype, info='filename', options={}):
     # Force unicode as soon as possible
     filename = u(filename)
 
-    if isinstance(info, base_text_type):
-        info = [info]
+    if info is None:
+        info = ['filename']
+
+#    if isinstance(info, basestring):
+#        info = [info]
 
     for infotype in info:
         if infotype == 'filename':

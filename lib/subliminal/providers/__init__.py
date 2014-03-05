@@ -1,19 +1,15 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
-import babelfish
-import pkg_resources
+import contextlib
 import logging
-from ..exceptions import ProviderNotAvailable, InvalidSubtitle
+import socket
+import babelfish
+from pkg_resources import iter_entry_points, EntryPoint
+import requests
 from ..video import Episode, Movie
 
 
 logger = logging.getLogger("subliminal")
-
-#: Entry point for the providers
-PROVIDER_ENTRY_POINT = 'subliminal.providers'
-
-#: Available provider names
-PROVIDERS = {entry_point.name.decode('utf-8') for entry_point in pkg_resources.iter_entry_points(PROVIDER_ENTRY_POINT)}
 
 
 class Provider(object):
@@ -132,7 +128,6 @@ class Provider(object):
         :param subtitle: subtitle to download
         :type subtitle: :class:`~subliminal.subtitle.Subtitle`
         :raise: :class:`~subliminal.exceptions.ProviderNotAvailable` if the provider is unavailable
-        :raise: :class:`~subliminal.exceptions.InvalidSubtitle` if the downloaded subtitle is invalid
         :raise: :class:`~subliminal.exceptions.ProviderError` if something unexpected occured
 
         """
@@ -142,25 +137,98 @@ class Provider(object):
         return '<%s [%r]>' % (self.__class__.__name__, self.video_types)
 
 
-def get_provider(name):
-    """Get a :class:`Provider` class by its name from the :data:`PROVIDER_ENTRY_POINT` entry point
+class ProviderManager(object):
+    """Manager for providers behaving like a dict with lazy loading
 
-    :param string name: name of the provider
-    :return: the matching :class:`Provider`
-    :rtype: :class:`Provider` class
-    :raise: ValueError if the :class:`Provider` is not found
+    Loading is done in this order:
+
+    * Entry point providers
+    * Registered providers
+
+    .. attribute:: entry_point
+
+        The entry point where to look for providers
 
     """
-    for entry_point in pkg_resources.iter_entry_points(PROVIDER_ENTRY_POINT):
-        if entry_point.name.decode('utf-8') == name:
-            return entry_point.load()
-    raise ValueError('Provider %r not found' % name)
+    entry_point = 'subliminal.providers'
+
+    def __init__(self):
+        #: Registered providers with entry point syntax
+        self.registered_providers = ['addic7ed = subliminal.providers.addic7ed:Addic7edProvider',
+                                     'opensubtitles = subliminal.providers.opensubtitles:OpenSubtitlesProvider',
+                                     'podnapisi = subliminal.providers.podnapisi:PodnapisiProvider',
+                                     'thesubdb = subliminal.providers.thesubdb:TheSubDBProvider',
+                                     'tvsubtitles = subliminal.providers.tvsubtitles:TVsubtitlesProvider']
+
+        #: Loaded providers
+        self.providers = {}
+
+    @property
+    def available_providers(self):
+        """Available providers"""
+        available_providers = set(self.providers.keys())
+        available_providers.update([ep.name for ep in iter_entry_points(self.entry_point)])
+        available_providers.update([EntryPoint.parse(c).name for c in self.registered_providers])
+        return available_providers
+
+    def __getitem__(self, name):
+        """Get a provider, lazy loading it if necessary"""
+        if name in self.providers:
+            return self.providers[name]
+        for ep in iter_entry_points(self.entry_point):
+            if ep.name == name:
+                self.providers[ep.name] = ep.load()
+                return self.providers[ep.name]
+        for ep in (EntryPoint.parse(c) for c in self.registered_providers):
+            if ep.name == name:
+                self.providers[ep.name] = ep.load(require=False)
+                return self.providers[ep.name]
+        raise KeyError(name)
+
+    def __setitem__(self, name, provider):
+        """Load a provider"""
+        self.providers[name] = provider
+
+    def __delitem__(self, name):
+        """Unload a provider"""
+        del self.providers[name]
+
+    def __iter__(self):
+        """Iterator over loaded providers"""
+        return iter(self.providers)
+
+    def register(self, entry_point):
+        """Register a provider
+
+        :param string entry_point: provider to register (entry point syntax)
+        :raise: ValueError if already registered
+
+        """
+        if entry_point in self.registered_providers:
+            raise ValueError('Entry point \'%s\' already registered' % entry_point)
+        entry_point_name = EntryPoint.parse(entry_point).name
+        if entry_point_name in self.available_providers:
+            raise ValueError('An entry point with name \'%s\' already registered' % entry_point_name)
+        self.registered_providers.insert(0, entry_point)
+
+    def unregister(self, entry_point):
+        """Unregister a provider
+
+        :param string entry_point: provider to unregister (entry point syntax)
+
+        """
+        self.registered_providers.remove(entry_point)
+
+    def __contains__(self, name):
+        return name in self.providers
+
+provider_manager = ProviderManager()
 
 
-class ProviderManager(object):
-    """A :class:`ProviderManager` makes the :class:`Provider` API available for a set of :class:`Provider`
+class ProviderPool(object):
+    """A pool of providers with the same API as a single :class:`Provider`
 
-    The :class:`ProviderManager` supports the ``with`` statement to :meth:`terminate` the providers
+    The :class:`ProviderPool` supports the ``with`` statement to :meth:`terminate` the providers
 
     :param providers: providers to use, if not all
     :type providers: list of string or None
@@ -170,7 +238,7 @@ class ProviderManager(object):
     """
     def __init__(self, providers=None, provider_configs=None):
         self.provider_configs = provider_configs or {}
-        self.providers = {provider_name: get_provider(provider_name) for provider_name in providers}
+        self.providers = {p: provider_manager[p] for p in (providers or provider_manager.available_providers)}
         self.initialized_providers = {}
         self.discarded_providers = set()
 
@@ -222,13 +290,14 @@ class ProviderManager(object):
                 provider = self.get_initialized_provider(provider_name)
                 logger.info('Listing subtitles with provider %r and languages %r', provider_name, provider_languages)
                 provider_subtitles = provider.list_subtitles(video, provider_languages)
-                logger.info('Found %d subtitles', len(provider_subtitles) if provider_subtitles else 0)
+                logger.info('Found %d subtitles', len(provider_subtitles))
                 subtitles.extend(provider_subtitles)
-            except ProviderNotAvailable:
-                logger.warning('Provider %r is not available, discarding it', provider_name)
+            except (requests.exceptions.Timeout, socket.timeout):
+                logger.warning('Provider %r timed out, discarding it', provider_name)
                 self.discarded_providers.add(provider_name)
-            except Exception, e:
-                logger.exception('Unexpected error in provider %r', provider_name)
+            except:
+                logger.exception('Unexpected error in provider %r, discarding it', provider_name)
+                self.discarded_providers.add(provider_name)
         return subtitles
 
     def download_subtitle(self, subtitle):
@@ -246,14 +315,16 @@ class ProviderManager(object):
         try:
             provider = self.get_initialized_provider(subtitle.provider_name)
             provider.download_subtitle(subtitle)
+            if not subtitle.is_valid:
+                logger.warning('Invalid subtitle')
+                return False
             return True
-        except ProviderNotAvailable:
-            logger.warning('Provider %r is not available, discarding it', subtitle.provider_name)
+        except (requests.exceptions.Timeout, socket.timeout):
+            logger.warning('Provider %r timed out, discarding it', subtitle.provider_name)
             self.discarded_providers.add(subtitle.provider_name)
-        except InvalidSubtitle:
-            logger.warning('Invalid subtitle')
         except:
-            logger.exception('Unexpected error in provider %r', subtitle.provider_name)
+            logger.exception('Unexpected error in provider %r, discarding it', subtitle.provider_name)
+            self.discarded_providers.add(subtitle.provider_name)
         return False
 
     def terminate(self):
@@ -261,7 +332,7 @@ class ProviderManager(object):
         for (provider_name, provider) in self.initialized_providers.items():
             try:
                 provider.terminate()
-            except ProviderNotAvailable:
-                logger.warning('Provider %r is not available, unable to terminate', provider_name)
+            except (requests.exceptions.Timeout, socket.timeout):
+                logger.warning('Provider %r timed out, unable to terminate', provider_name)
             except:
                 logger.exception('Unexpected error in provider %r', provider_name)

@@ -3,6 +3,9 @@ from __future__ import unicode_literals
 import logging
 import os.path
 import babelfish
+import chardet
+import guessit.matchtree
+import guessit.transfo
 import pysrt
 from .video import Episode, Movie
 
@@ -16,14 +19,76 @@ class Subtitle(object):
     :param language: language of the subtitle
     :type language: :class:`babelfish.Language`
     :param bool hearing_impaired: `True` if the subtitle is hearing impaired, `False` otherwise
+    :param page_link: link to the web page from which the subtitle can be downloaded, if any
+    :type page_link: string or None
 
     """
-    def __init__(self, language, hearing_impaired=False):
+    def __init__(self, language, hearing_impaired=False, page_link=None):
         self.language = language
         self.hearing_impaired = hearing_impaired
+        self.page_link = page_link
 
-        #: Subtitle's content once downloaded with :meth:`~subliminal.providers.Provider.download_subtitle`
+        #: Content as bytes
         self.content = None
+
+        #: Encoding to decode with when accessing :attr:`text`
+        self.encoding = None
+
+    @property
+    def guessed_encoding(self):
+        """Guessed encoding using the language, falling back on chardet"""
+        # always try utf-8 first
+        encodings = ['utf-8']
+
+        # add language-specific encodings
+        if self.language.alpha3 == 'zho':
+            encodings.extend(['gb18030', 'big5'])
+        elif self.language.alpha3 == 'jpn':
+            encodings.append('shift-jis')
+        elif self.language.alpha3 == 'ara':
+            encodings.append('windows-1256')
+        elif self.language.alpha3 == 'heb':
+            encodings.append('windows-1255')
+        elif self.language.alpha3 == 'tur':
+            encodings.extend(['iso-8859-9', 'windows-1254'])
+        else:
+            encodings.append('latin-1')
+
+        # try to decode
+        for encoding in encodings:
+            try:
+                self.content.decode(encoding)
+                return encoding
+            except UnicodeDecodeError:
+                pass
+
+        # fallback on chardet
+        logger.warning('Could not decode content with encodings %r', encodings)
+        return chardet.detect(self.content)['encoding']
+
+    @property
+    def text(self):
+        """Content as string
+
+        If :attr:`encoding` is None, the encoding is guessed with :attr:`guessed_encoding`
+
+        """
+        if not self.content:
+            return ''
+        return self.content.decode(self.encoding or self.guessed_encoding, errors='replace')
+
+    @property
+    def is_valid(self):
+        """Check if a subtitle text is a valid SubRip format"""
+        try:
+            pysrt.from_string(self.text, error_handling=pysrt.ERROR_RAISE)
+            return True
+        except pysrt.Error as e:
+            if e.args[0] > 80:
+                return True
+        except:
+            logger.exception('Unexpected error when validating subtitle')
+        return False
 
     def compute_matches(self, video):
         """Compute the matches of the subtitle against the `video`
@@ -63,13 +128,13 @@ class Subtitle(object):
             score = video.scores['hash']
         else:
             # remove equivalences
-#            if isinstance(video, Episode):
-            if 'imdb_id' in matches:
-                matches -= {'series', 'tvdb_id', 'season', 'episode', 'title', 'year'}
-            if 'tvdb_id' in matches:
-                matches -= {'series', 'year'}
-            if 'title' in matches:
-                matches -= {'season', 'episode'}
+            if isinstance(video, Episode):
+                if 'imdb_id' in matches:
+                    matches -= {'series', 'tvdb_id', 'season', 'episode', 'title', 'year'}
+                if 'tvdb_id' in matches:
+                    matches -= {'series', 'year'}
+                if 'title' in matches:
+                    matches -= {'season', 'episode'}
             # add other scores
             score += sum((video.scores[match] for match in matches))
         logger.info('Computed score %d with matches %r', score, initial_matches)
@@ -98,24 +163,6 @@ def get_subtitle_path(video_path, language=None):
     return subtitle_path + '.srt'
 
 
-def is_valid_subtitle(subtitle_text):
-    """Check if a subtitle text is a valid SubRip format
-
-    :return: `True` if the subtitle is valid, `False` otherwise
-    :rtype: bool
-
-    """
-    try:
-        pysrt.from_string(subtitle_text, error_handling=pysrt.ERROR_RAISE)
-        return True
-    except pysrt.Error as e:
-        if e.args[0] > 80:
-            return True
-    except:
-        logger.exception('Unexpected error when validating subtitle')
-    return False
-
-
 def compute_guess_matches(video, guess):
     """Compute matches between a `video` and a `guess`
 
@@ -128,36 +175,104 @@ def compute_guess_matches(video, guess):
 
     """
     matches = set()
-#    if isinstance(video, Episode):
-    # Series
-    if video.series and 'series' in guess and guess['series'].lower() == video.series.lower():
-        matches.add('series')
-    # Season
-    if video.season and 'seasonNumber' in guess and guess['seasonNumber'] == video.season:
-        matches.add('season')
-    # Episode
-    if video.episode and 'episodeNumber' in guess and guess['episodeNumber'] == video.episode:
-        matches.add('episode')
-    # Year
-    if video.year == guess.get('year'):  # count "no year" as an information
-        matches.add('year')
-#    elif isinstance(video, Movie):
-#        # Year
-#        if video.year and 'year' in guess and guess['year'] == video.year:
-#            matches.add('year')
-    # Title
+    if isinstance(video, Episode):
+        # series
+        if video.series and 'series' in guess and guess['series'].lower() == video.series.lower():
+            matches.add('series')
+        # season
+        if video.season and 'seasonNumber' in guess and guess['seasonNumber'] == video.season:
+            matches.add('season')
+        # episode
+        if video.episode and 'episodeNumber' in guess and guess['episodeNumber'] == video.episode:
+            matches.add('episode')
+        # year
+        if video.year == guess.get('year'):  # count "no year" as an information
+            matches.add('year')
+    elif isinstance(video, Movie):
+        # year
+        if video.year and 'year' in guess and guess['year'] == video.year:
+            matches.add('year')
+    # title
     if video.title and 'title' in guess and guess['title'].lower() == video.title.lower():
         matches.add('title')
-    # Release group
+    # release group
     if video.release_group and 'releaseGroup' in guess and guess['releaseGroup'].lower() == video.release_group.lower():
         matches.add('release_group')
-    # Screen size
+    # screen size
     if video.resolution and 'screenSize' in guess and guess['screenSize'] == video.resolution:
         matches.add('resolution')
-    # Video codec
+    # format
+    if video.format and 'format' in guess and guess['format'].lower() == video.format.lower():
+        matches.add('format')
+    # video codec
     if video.video_codec and 'videoCodec' in guess and guess['videoCodec'] == video.video_codec:
         matches.add('video_codec')
-    # Audio codec
+    # audio codec
     if video.audio_codec and 'audioCodec' in guess and guess['audioCodec'] == video.audio_codec:
         matches.add('audio_codec')
     return matches
+
+
+def compute_guess_properties_matches(video, string, propertytype):
+    """Compute matches between a `video` and properties of a certain property type
+
+    :param video: the video to compute the matches on
+    :type video: :class:`~subliminal.video.Video`
+    :param string string: the string to check for a certain property type
+    :param string propertytype: the type of property to check (as defined in guessit)
+    :return: matches of a certain property type (but will only be 1 match because we are checking for 1 property type)
+    :rtype: set
+
+    Supported property types: result of guessit.transfo.guess_properties.GuessProperties().supported_properties()
+    [u'audioProfile',
+    u'videoCodec',
+    u'container',
+    u'format',
+    u'episodeFormat',
+    u'videoApi',
+    u'screenSize',
+    u'videoProfile',
+    u'audioChannels',
+    u'other',
+    u'audioCodec']
+
+    """
+    matches = set()
+    # We only check for the property types relevant for us
+    if propertytype == 'screenSize' and video.resolution:
+        for prop in guess_properties(string, propertytype):
+            if prop.lower() == video.resolution.lower():
+                matches.add('resolution')
+    elif propertytype == 'format' and video.format:
+        for prop in guess_properties(string, propertytype):
+            if prop.lower() == video.format.lower():
+                matches.add('format')
+    elif propertytype == 'videoCodec' and video.video_codec:
+        for prop in guess_properties(string, propertytype):
+            if prop.lower() == video.video_codec.lower():
+                matches.add('video_codec')
+    elif propertytype == 'audioCodec' and video.audio_codec:
+        for prop in guess_properties(string, propertytype):
+            if prop.lower() == video.audio_codec.lower():
+                matches.add('audio_codec')
+    return matches
+
+
+def guess_properties(string, propertytype):
+    properties = set()
+    if string:
+        tree = guessit.matchtree.MatchTree(string)
+        guessit.transfo.guess_properties.GuessProperties().process(tree)
+        properties = set(n.guess[propertytype] for n in tree.nodes() if propertytype in n.guess)
+    return properties
+
+
+def fix_line_endings(content):
+    """Fix line ending of `content` by changing it to \n
+
+    :param bytes content: content of the subtitle
+    :return: the content with fixed line endings
+    :rtype: bytes
+
+    """
+    return content.replace(b'\r\n', b'\n').replace(b'\r', b'\n')
